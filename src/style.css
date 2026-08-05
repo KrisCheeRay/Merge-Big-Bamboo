@@ -37,10 +37,45 @@ button {
 }
 
 .page-shell {
+  position: relative;
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 22px;
+}
+
+.github-link {
+  position: fixed;
+  z-index: 20;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(44, 82, 51, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 252, 226, 0.9);
+  box-shadow: 0 6px 18px rgba(45, 83, 49, 0.16);
+  color: #315b3c;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.github-link:hover {
+  transform: translateY(-1px);
+  background: #315b3c;
+  color: #fffbe5;
+}
+
+.github-link:focus-visible {
+  outline: 3px solid rgba(79, 150, 96, 0.38);
+  outline-offset: 3px;
+}
+
+.github-link svg {
+  width: 23px;
+  height: 23px;
+  fill: currentColor;
 }
 
 .game-card {
@@ -427,7 +462,20 @@ h1 {
 
   .hero-bar {
     gap: 10px;
-    padding: 11px 12px 10px;
+    padding: 11px 54px 10px 12px;
+  }
+
+  .github-link {
+    top: max(9px, env(safe-area-inset-top));
+    right: max(9px, env(safe-area-inset-right));
+    width: 36px;
+    height: 36px;
+    box-shadow: none;
+  }
+
+  .github-link svg {
+    width: 20px;
+    height: 20px;
   }
 
   h1 {
