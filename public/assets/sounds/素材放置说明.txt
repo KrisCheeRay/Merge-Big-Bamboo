@@ -1,0 +1,14 @@
+将第 2～10 级的 MP3 音效放在本目录，文件名必须为：
+level-2.mp3
+level-3.mp3
+level-4.mp3
+level-5.mp3
+level-6.mp3
+level-7.mp3
+level-8.mp3
+level-9.mp3
+level-10.mp3
+
+第 1 级不需要音效。
+合成出哪一级，就播放该等级对应的 MP3。
+没有对应音效时保持静音，不影响游戏运行。
