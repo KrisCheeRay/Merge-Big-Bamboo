@@ -1,6 +1,7 @@
 import Matter from 'matter-js';
 import {
   LEVEL_COUNT,
+  ENDLESS_CLEAR_SCORE,
   LEVELS,
   MERGE_SOUND_POOL,
   WIN_SOUND,
@@ -24,11 +25,15 @@ const {
 } = Matter;
 
 export class MergeMilkFrogGame {
-  constructor(root, callbacks) {
+  constructor(root, options = {}) {
     this.root = root;
-    this.callbacks = callbacks;
+    this.callbacks = options.callbacks || {};
+    this.mode = options.mode === 'endless' ? 'endless' : 'classic';
+    this.sessionId = options.sessionId || '';
     this.score = 0;
-    this.bestScore = loadBestScore();
+    this.bestScore = loadBestScore(this.mode);
+    this.initialBestScore = this.bestScore;
+    this.startedAt = Date.now();
     this.isFinished = false;
     this.canDrop = true;
     this.currentLevel = randomSpawnLevel();
@@ -57,26 +62,46 @@ export class MergeMilkFrogGame {
   }
 
   renderShell() {
+    const isEndless = this.mode === 'endless';
+    const modeLabel = isEndless ? '无尽模式' : '经典模式';
+    const tagline = isEndless
+      ? `两个第 10 级会消失并奖励 ${ENDLESS_CLEAR_SCORE} 分，坚持到最后。`
+      : '把相同的小奶蛙碰到一起，合成第 10 级即可通关。';
+
     this.root.innerHTML = `
       <main class="page-shell">
-        <a
-          class="github-link"
-          href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="在新标签页查看 GitHub 源码"
-          title="查看 GitHub 源码"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" />
-          </svg>
-        </a>
+        <nav class="social-links" aria-label="站外链接">
+          <a
+            class="social-link github-link"
+            href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="在新标签页查看 GitHub 源码"
+            title="查看 GitHub 源码"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" />
+            </svg>
+          </a>
+          <a
+            class="social-link bilibili-link"
+            href="https://space.bilibili.com/305672036"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="在新标签页查看 GeForceRTX8080ti 的哔哩哔哩主页"
+            title="查看我的哔哩哔哩主页"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8.2 2.6a1 1 0 0 1 1.4.1L12 5l2.4-2.3a1 1 0 1 1 1.4 1.4L14.9 5H18a3.5 3.5 0 0 1 3.5 3.5v8A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-8A3.5 3.5 0 0 1 6 5h3.1l-.9-.9a1 1 0 0 1 0-1.5ZM6 7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 6 18h12a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 18 7H6Zm2.5 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm7 0a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm-6.7 4.2a1 1 0 0 1 1.4 0c1 1 2.6 1 3.6 0a1 1 0 1 1 1.4 1.4 4.6 4.6 0 0 1-6.4 0 1 1 0 0 1 0-1.4Z" />
+            </svg>
+          </a>
+        </nav>
         <section class="game-card" aria-label="合成大奶蛙游戏">
           <header class="hero-bar">
             <div class="brand-block">
-              <p class="eyebrow">十级合成挑战</p>
+              <p class="eyebrow">${modeLabel} · 十级合成挑战</p>
               <h1>合成大奶蛙</h1>
-              <p class="tagline">把相同的小奶蛙碰到一起，合成第 10 级即可通关。</p>
+              <p class="tagline">${tagline}</p>
             </div>
             <div class="score-board" aria-label="分数信息">
               <div class="score-item">
@@ -111,7 +136,11 @@ export class MergeMilkFrogGame {
               </label>
             </div>
 
-            <button class="soft-button restart-button" id="restart-game" type="button">重新开始</button>
+            <div class="game-actions">
+              <button class="soft-button" id="leaderboard-game" type="button">排行榜</button>
+              <button class="soft-button" id="back-to-modes" type="button">模式选择</button>
+              <button class="soft-button restart-button" id="restart-game" type="button">重新开始</button>
+            </div>
           </div>
 
           <div class="game-stage" id="canvas-host">
@@ -127,7 +156,11 @@ export class MergeMilkFrogGame {
                   <strong id="final-score">0</strong>
                 </div>
                 <p class="result-best" id="result-best"></p>
-                <button class="primary-button" id="play-again" type="button">再玩一次</button>
+                <p class="submit-status" id="submit-status" aria-live="polite"></p>
+                <div class="result-actions">
+                  <button class="soft-button" id="result-leaderboard" type="button">查看排行榜</button>
+                  <button class="primary-button" id="play-again" type="button">再玩一次</button>
+                </div>
               </div>
             </div>
           </div>
@@ -146,6 +179,7 @@ export class MergeMilkFrogGame {
     this.soundToggle = this.root.querySelector('#sound-toggle');
     this.volumeInput = this.root.querySelector('#master-volume');
     this.volumeValue = this.root.querySelector('#volume-value');
+    this.submitStatus = this.root.querySelector('#submit-status');
   }
 
   bindUi() {
@@ -183,6 +217,13 @@ export class MergeMilkFrogGame {
 
     this.root.querySelector('#restart-game').addEventListener('click', this.callbacks.onRestartRequest);
     this.root.querySelector('#play-again').addEventListener('click', this.callbacks.onPlayAgain);
+    this.root.querySelector('#back-to-modes').addEventListener('click', this.callbacks.onBackToModes);
+    this.root.querySelector('#leaderboard-game').addEventListener('click', () => {
+      this.callbacks.onLeaderboardRequest?.(this.mode);
+    });
+    this.root.querySelector('#result-leaderboard').addEventListener('click', () => {
+      this.callbacks.onLeaderboardRequest?.(this.mode);
+    });
 
     this.soundToggle.addEventListener('click', () => {
       this.audioPreferences.enabled = !this.audioPreferences.enabled;
@@ -328,12 +369,19 @@ export class MergeMilkFrogGame {
       const b = pair.bodyB;
       if (!a.isGameBall || !b.isGameBall) continue;
       if (a.gameLevel !== b.gameLevel) continue;
-      if (a.gameLevel >= LEVEL_COUNT - 1) continue;
       if (this.mergingBodyIds.has(a.id) || this.mergingBodyIds.has(b.id)) continue;
+
+      const isEndlessClear = this.mode === 'endless' && a.gameLevel === LEVEL_COUNT - 1;
+      if (a.gameLevel >= LEVEL_COUNT - 1 && !isEndlessClear) continue;
 
       this.mergingBodyIds.add(a.id);
       this.mergingBodyIds.add(b.id);
-      this.mergeQueue.push({ a, b, level: a.gameLevel + 1 });
+      this.mergeQueue.push({
+        a,
+        b,
+        level: isEndlessClear ? LEVEL_COUNT - 1 : a.gameLevel + 1,
+        isEndlessClear,
+      });
     }
   }
 
@@ -345,9 +393,19 @@ export class MergeMilkFrogGame {
     }
 
     while (this.mergeQueue.length) {
-      const { a, b, level } = this.mergeQueue.shift();
+      const { a, b, level, isEndlessClear } = this.mergeQueue.shift();
       const bodies = Composite.allBodies(this.engine.world);
       if (!bodies.includes(a) || !bodies.includes(b)) continue;
+
+      Composite.remove(this.engine.world, [a, b]);
+
+      if (isEndlessClear) {
+        this.score += ENDLESS_CLEAR_SCORE;
+        this.updateScore();
+        this.playMergeSound(LEVEL_COUNT - 1);
+        this.wakeAllBalls();
+        continue;
+      }
 
       const x = (a.position.x + b.position.x) / 2;
       const y = (a.position.y + b.position.y) / 2;
@@ -355,8 +413,6 @@ export class MergeMilkFrogGame {
         x: (a.velocity.x + b.velocity.x) / 2,
         y: (a.velocity.y + b.velocity.y) / 2,
       };
-
-      Composite.remove(this.engine.world, [a, b]);
       const merged = this.createBall(x, y, level);
       Body.setVelocity(merged, {
         x: velocity.x + (Math.random() - 0.5) * 1.5,
@@ -370,7 +426,7 @@ export class MergeMilkFrogGame {
       this.updateScore();
       this.playMergeSound(level);
 
-      if (level === LEVEL_COUNT - 1) {
+      if (level === LEVEL_COUNT - 1 && this.mode === 'classic') {
         this.finishGame('win');
         break;
       }
@@ -382,7 +438,7 @@ export class MergeMilkFrogGame {
   updateScore() {
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
-      saveBestScore(this.bestScore);
+      saveBestScore(this.mode, this.bestScore);
     }
     this.scoreElement.textContent = String(this.score);
     this.bestScoreElement.textContent = String(this.bestScore);
@@ -580,17 +636,35 @@ export class MergeMilkFrogGame {
     Runner.stop(this.runner);
 
     const isWin = result === 'win';
-    this.root.querySelector('#overlay-kicker').textContent = isWin ? '第 10 级达成' : '奶蛙堆得太高啦';
+    const isNewBest = this.score > this.initialBestScore;
+    this.root.querySelector('#overlay-kicker').textContent = isWin
+      ? '第 10 级达成'
+      : this.mode === 'endless' ? '无尽挑战结束' : '奶蛙堆得太高啦';
     this.root.querySelector('#overlay-title').textContent = isWin ? '恭喜通关！' : '游戏结束';
     this.root.querySelector('#overlay-message').textContent = isWin
       ? '你成功合成了标准大笑奶龙。'
       : '球体稳定超过警戒线 1.7 秒，本局结束。';
     this.root.querySelector('#final-score').textContent = String(this.score);
-    this.root.querySelector('#result-best').textContent = this.score >= this.bestScore
-      ? `历史最高分：${this.bestScore}`
-      : `历史最高分：${this.bestScore}`;
+    this.root.querySelector('#result-best').textContent = isNewBest
+      ? `新纪录！本模式历史最高分：${this.bestScore}`
+      : `本模式历史最高分：${this.bestScore}`;
+    this.submitStatus.textContent = '正在提交排行榜成绩…';
     this.overlay.dataset.result = result;
     this.overlay.classList.remove('hidden');
+
+    this.callbacks.onFinish?.({
+      mode: this.mode,
+      score: this.score,
+      result,
+      sessionId: this.sessionId,
+      durationMs: Math.max(0, Date.now() - this.startedAt),
+    });
+  }
+
+  setSubmitStatus(message, state = '') {
+    if (!this.submitStatus) return;
+    this.submitStatus.textContent = message;
+    this.submitStatus.dataset.state = state;
   }
 
   destroy() {
@@ -606,10 +680,12 @@ export class MergeMilkFrogGame {
     }
 
     if (this.render) {
+      Events.off(this.render);
       Render.stop(this.render);
       this.render.canvas.remove();
       this.render.textures = {};
     }
+    this.imageCache.clear();
     if (this.runner) Runner.stop(this.runner);
     if (this.engine) {
       Events.off(this.engine);

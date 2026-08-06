@@ -6,3 +6,13 @@ dist/
 Thumbs.db
 .env
 .env.*
+
+# Private leaderboard backend and runtime data
+server/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Local deployment artifacts
+outputs/
+*.zip

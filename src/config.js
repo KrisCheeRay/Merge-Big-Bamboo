@@ -1,6 +1,8 @@
 export const LEVEL_COUNT = 10;
+export const ENDLESS_CLEAR_SCORE = 1024;
 export const AUDIO_PREFERENCES_KEY = 'merge-big-milk-frog-audio-v1';
-export const BEST_SCORE_KEY = 'merge-big-milk-frog-best-score-v1';
+export const PLAYER_PROFILE_KEY = 'merge-big-milk-frog-player-v1';
+const BEST_SCORE_KEY_PREFIX = 'merge-big-milk-frog-best-score-v2';
 
 const COLORS = [
   '#fff1a8',
@@ -51,20 +53,46 @@ export function getMergeScore(level) {
   return 2 ** level;
 }
 
-export function loadBestScore() {
+export function loadBestScore(mode = 'classic') {
   try {
-    const value = Number(localStorage.getItem(BEST_SCORE_KEY));
+    const value = Number(localStorage.getItem(`${BEST_SCORE_KEY_PREFIX}-${mode}`));
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
   } catch {
     return 0;
   }
 }
 
-export function saveBestScore(score) {
+export function saveBestScore(mode, score) {
   try {
-    localStorage.setItem(BEST_SCORE_KEY, String(Math.max(0, Math.floor(score))));
+    localStorage.setItem(
+      `${BEST_SCORE_KEY_PREFIX}-${mode}`,
+      String(Math.max(0, Math.floor(score)))
+    );
   } catch {
     // 浏览器禁用本地存储时，最高分仅在当前页面内有效。
+  }
+}
+
+export function loadPlayerProfile() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PLAYER_PROFILE_KEY) || '{}');
+    return {
+      playerId: typeof saved.playerId === 'string' ? saved.playerId : '',
+      nickname: typeof saved.nickname === 'string' ? saved.nickname : '',
+    };
+  } catch {
+    return { playerId: '', nickname: '' };
+  }
+}
+
+export function savePlayerProfile(profile) {
+  try {
+    localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify({
+      playerId: profile.playerId || '',
+      nickname: profile.nickname || '',
+    }));
+  } catch {
+    // 浏览器禁用本地存储时，身份仅在当前页面内有效。
   }
 }
 
