@@ -2,6 +2,7 @@ export const LEVEL_COUNT = 10;
 export const ENDLESS_CLEAR_SCORE = 1024;
 export const AUDIO_PREFERENCES_KEY = 'merge-big-milk-frog-audio-v1';
 export const PLAYER_PROFILE_KEY = 'merge-big-milk-frog-player-v1';
+export const APPEARANCE_SELECTION_KEY = 'merge-big-milk-frog-appearance-v1';
 const BEST_SCORE_KEY_PREFIX = 'merge-big-milk-frog-best-score-v2';
 
 const COLORS = [
@@ -17,12 +18,82 @@ const COLORS = [
   '#1b4332',
 ];
 
-export const LEVELS = Array.from({ length: LEVEL_COUNT }, (_, index) => ({
-  index,
-  label: String(index + 1),
-  color: COLORS[index],
-  image: `${import.meta.env.BASE_URL}assets/balls/level-${index + 1}.png`,
-}));
+const VARIANT_DEFINITIONS = [
+  {
+    name: '舞蹈奶龙',
+    image: 'level-1-dance.gif',
+    animation: {
+      sheet: 'level-1-dance-sheet.webp',
+      frameWidth: 155,
+      frameHeight: 208,
+      columns: 7,
+      frameCount: 27,
+      durationMs: 1790,
+    },
+  },
+  { name: '委屈奶龙', image: 'level-2-sad.png' },
+  { name: '生气奶龙', image: 'level-3-angry.png' },
+  { name: '奶狗', image: 'level-4-dog.png' },
+  { name: '奶鱼', image: 'level-5-fish.jpeg' },
+  { name: '奶猴', image: 'level-6-monkey.png' },
+  {
+    name: '持剑奶龙',
+    image: 'level-7-sword.gif',
+    animation: {
+      sheet: 'level-7-sword-sheet.webp',
+      frameWidth: 240,
+      frameHeight: 240,
+      columns: 7,
+      frameCount: 42,
+      durationMs: 2790,
+    },
+  },
+  { name: '功德奶龙', image: 'level-8-monk.jpeg' },
+  { name: '天使奶龙', image: 'level-9-angel.png' },
+  {
+    name: '大笑奶龙',
+    image: 'level-10-laugh.gif',
+    animation: {
+      sheet: 'level-10-laugh-sheet.webp',
+      frameWidth: 160,
+      frameHeight: 160,
+      columns: 9,
+      frameCount: 68,
+      durationMs: 4470,
+    },
+  },
+];
+
+export const LEVELS = Array.from({ length: LEVEL_COUNT }, (_, index) => {
+  const originalImage = `${import.meta.env.BASE_URL}assets/balls/level-${index + 1}.png`;
+  const variant = VARIANT_DEFINITIONS[index];
+  return {
+    index,
+    label: String(index + 1),
+    color: COLORS[index],
+    image: originalImage,
+    appearances: {
+      original: {
+        id: 'original',
+        name: '原版',
+        preview: originalImage,
+        image: originalImage,
+      },
+      variant: {
+        id: 'variant',
+        name: variant.name,
+        preview: `${import.meta.env.BASE_URL}assets/variants/${variant.image}`,
+        image: `${import.meta.env.BASE_URL}assets/variants/${variant.image}`,
+        animation: variant.animation
+          ? {
+              ...variant.animation,
+              sheet: `${import.meta.env.BASE_URL}assets/animations/${variant.animation.sheet}`,
+            }
+          : null,
+      },
+    },
+  };
+});
 
 export const MERGE_SOUND_POOL = [5, 6, 7, 8, 9, 10].map(
   (level) => `${import.meta.env.BASE_URL}assets/sounds/level-${level}.mp3`
@@ -40,6 +111,42 @@ const SPAWN_TABLE = [
 export function randomSpawnLevel() {
   const value = Math.random();
   return SPAWN_TABLE.find((item) => value < item.cumulative)?.level ?? 0;
+}
+
+export function createDefaultAppearanceSelection() {
+  return Array.from({ length: LEVEL_COUNT }, () => 'original');
+}
+
+export function normalizeAppearanceSelection(selection) {
+  const saved = Array.isArray(selection) ? selection : [];
+  return Array.from({ length: LEVEL_COUNT }, (_, index) => (
+    saved[index] === 'variant' ? 'variant' : 'original'
+  ));
+}
+
+export function loadAppearanceSelection() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(APPEARANCE_SELECTION_KEY) || '[]');
+    return normalizeAppearanceSelection(saved);
+  } catch {
+    return createDefaultAppearanceSelection();
+  }
+}
+
+export function saveAppearanceSelection(selection) {
+  const normalized = normalizeAppearanceSelection(selection);
+  try {
+    localStorage.setItem(APPEARANCE_SELECTION_KEY, JSON.stringify(normalized));
+  } catch {
+    // 浏览器禁用本地存储时，外观选择仅在当前页面内有效。
+  }
+  return normalized;
+}
+
+export function getLevelAppearance(levelIndex, selection) {
+  const level = LEVELS[levelIndex] || LEVELS[0];
+  const normalized = normalizeAppearanceSelection(selection);
+  return level.appearances[normalized[level.index]] || level.appearances.original;
 }
 
 export function getRadius(level) {

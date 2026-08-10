@@ -1,6 +1,11 @@
 import './style.css';
 import { MergeMilkFrogGame } from './game.js';
 import {
+  LEVELS,
+  loadAppearanceSelection,
+  saveAppearanceSelection,
+} from './config.js';
+import {
   createGameSession,
   fetchLeaderboard,
   getPlayerProfile,
@@ -14,6 +19,7 @@ let game = null;
 let currentMode = 'classic';
 let activeModal = null;
 let launchSequence = 0;
+let appearanceSelection = loadAppearanceSelection();
 
 renderAppShell();
 showModeSelect();
@@ -48,8 +54,11 @@ function showModeSelect() {
             <small>两个第 10 级消失，奖励 1024 分并继续挑战。</small>
           </button>
         </div>
-        <button class="secondary-wide-button" id="open-leaderboard" type="button">查看在线排行榜</button>
-        <p class="mode-note">首次查看榜单或提交成绩时，需要填写一次昵称。</p>
+        <div class="mode-secondary-actions">
+          <button class="secondary-wide-button" id="open-appearance" type="button">搭配球体外观</button>
+          <button class="secondary-wide-button" id="open-leaderboard" type="button">查看在线排行榜</button>
+        </div>
+        <p class="mode-note">每一级都能在原版和新角色之间选择；只改变外观，不影响分数和排行榜。</p>
       </section>
     </main>
   `;
@@ -57,6 +66,7 @@ function showModeSelect() {
   viewRoot.querySelectorAll('[data-mode]').forEach((button) => {
     button.addEventListener('click', () => startGame(button.dataset.mode));
   });
+  viewRoot.querySelector('#open-appearance').addEventListener('click', openAppearanceDialog);
   viewRoot.querySelector('#open-leaderboard').addEventListener('click', () => openLeaderboard(currentMode));
 }
 
@@ -82,6 +92,7 @@ async function startGame(mode) {
   game = new MergeMilkFrogGame(viewRoot, {
     mode: selectedMode,
     sessionId,
+    appearanceSelection,
     callbacks: {
       onRestartRequest: () => {
         if (window.confirm('重新开始会清空本局进度，确定要继续吗？')) {
@@ -99,6 +110,104 @@ async function startGame(mode) {
     },
   });
   game.start();
+}
+
+function openAppearanceDialog() {
+  if (activeModal) return;
+  const modalRoot = document.querySelector('#modal-root');
+  let draftSelection = [...appearanceSelection];
+  modalRoot.innerHTML = `
+    <div class="app-modal appearance-modal" role="dialog" aria-modal="true" aria-labelledby="appearance-title">
+      <section class="modal-panel appearance-panel">
+        <div class="appearance-heading">
+          <div>
+            <p class="overlay-kicker">十级独立搭配 · 自动保存</p>
+            <h2 id="appearance-title">选择球体外观</h2>
+            <p>每一级可单独选择原版或新变体，GIF 角色会在游戏中持续播放动画。</p>
+          </div>
+          <button class="modal-close" id="close-appearance" type="button" aria-label="关闭外观选择">×</button>
+        </div>
+        <div class="appearance-grid" id="appearance-grid" tabindex="-1">
+          ${LEVELS.map((level) => appearanceLevelCard(level, draftSelection[level.index])).join('')}
+        </div>
+        <div class="appearance-footer">
+          <button class="soft-button" id="all-original" type="button">全部原版</button>
+          <button class="soft-button" id="all-variant" type="button">全部新变体</button>
+          <button class="primary-button" id="save-appearance" type="button">保存搭配</button>
+        </div>
+      </section>
+    </div>
+  `;
+  activeModal = modalRoot.querySelector('.app-modal');
+  const grid = modalRoot.querySelector('#appearance-grid');
+
+  const close = () => {
+    modalRoot.replaceChildren();
+    activeModal = null;
+  };
+
+  const renderGrid = () => {
+    grid.innerHTML = LEVELS.map((level) => appearanceLevelCard(level, draftSelection[level.index])).join('');
+  };
+
+  grid.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-appearance-level][data-appearance-choice]');
+    if (!option) return;
+    const levelIndex = Number(option.dataset.appearanceLevel);
+    draftSelection[levelIndex] = option.dataset.appearanceChoice === 'variant' ? 'variant' : 'original';
+    grid.querySelectorAll(`[data-appearance-level="${levelIndex}"]`).forEach((button) => {
+      const selected = button.dataset.appearanceChoice === draftSelection[levelIndex];
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+  });
+
+  modalRoot.querySelector('#all-original').addEventListener('click', () => {
+    draftSelection = LEVELS.map(() => 'original');
+    renderGrid();
+    grid.focus({ preventScroll: true });
+  });
+  modalRoot.querySelector('#all-variant').addEventListener('click', () => {
+    draftSelection = LEVELS.map(() => 'variant');
+    renderGrid();
+    grid.focus({ preventScroll: true });
+  });
+  modalRoot.querySelector('#save-appearance').addEventListener('click', () => {
+    appearanceSelection = saveAppearanceSelection(draftSelection);
+    close();
+  });
+  modalRoot.querySelector('#close-appearance').addEventListener('click', close);
+  activeModal.addEventListener('click', (event) => {
+    if (event.target === activeModal) close();
+  });
+}
+
+function appearanceLevelCard(level, selectedChoice) {
+  const original = level.appearances.original;
+  const variant = level.appearances.variant;
+  return `
+    <article class="appearance-level-card">
+      <div class="appearance-level-title">
+        <strong>第 ${level.label} 级</strong>
+        ${variant.animation ? '<span class="gif-badge">GIF 动画</span>' : ''}
+      </div>
+      <div class="appearance-options">
+        ${appearanceOption(level.index, original, selectedChoice === 'original')}
+        ${appearanceOption(level.index, variant, selectedChoice === 'variant')}
+      </div>
+    </article>
+  `;
+}
+
+function appearanceOption(levelIndex, appearance, selected) {
+  return `
+    <button class="appearance-option ${selected ? 'selected' : ''}" type="button"
+      data-appearance-level="${levelIndex}" data-appearance-choice="${appearance.id}"
+      aria-pressed="${selected}">
+      <span class="appearance-thumb"><img src="${appearance.preview}" alt="" /></span>
+      <span>${escapeHtml(appearance.name)}</span>
+    </button>
+  `;
 }
 
 async function handleGameFinish(result) {
@@ -189,7 +298,7 @@ async function openLeaderboard(initialMode = 'classic') {
       <section class="modal-panel leaderboard-panel">
         <div class="leaderboard-heading">
           <div>
-            <p class="overlay-kicker">所有玩家共同排名</p>
+            <p class="overlay-kicker">所有玩家共同排名 · 展示前 100 名</p>
             <h2 id="leaderboard-title">在线排行榜</h2>
           </div>
           <button class="modal-close" id="close-leaderboard" type="button" aria-label="关闭排行榜">×</button>
@@ -259,7 +368,9 @@ function renderLeaderboard(container, data) {
     : '<li class="empty-ranking">还没有成绩，来成为第一名吧。</li>';
 
   container.innerHTML = `
-    <ol class="rank-list">${rows}</ol>
+    <div class="rank-scroll" tabindex="0" aria-label="排行榜前 100 名，可上下滚动">
+      <ol class="rank-list">${rows}</ol>
+    </div>
     <div class="my-ranking">
       <span>我的最高分</span>
       <strong>${data.me?.bestScore ?? 0}</strong>

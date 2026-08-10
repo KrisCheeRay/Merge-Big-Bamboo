@@ -5,6 +5,7 @@ import {
   LEVELS,
   MERGE_SOUND_POOL,
   WIN_SOUND,
+  getLevelAppearance,
   getMergeScore,
   getRadius,
   loadAudioPreferences,
@@ -30,6 +31,7 @@ export class MergeMilkFrogGame {
     this.callbacks = options.callbacks || {};
     this.mode = options.mode === 'endless' ? 'endless' : 'classic';
     this.sessionId = options.sessionId || '';
+    this.appearanceSelection = options.appearanceSelection;
     this.score = 0;
     this.bestScore = loadBestScore(this.mode);
     this.initialBestScore = this.bestScore;
@@ -43,6 +45,7 @@ export class MergeMilkFrogGame {
     this.mergingBodyIds = new Set();
     this.dangerSince = null;
     this.imageCache = new Map();
+    this.animationSheetCache = new Map();
     this.failedSounds = new Set();
     this.activeAudio = new Set();
     this.audioPreferences = loadAudioPreferences();
@@ -504,6 +507,7 @@ export class MergeMilkFrogGame {
 
   drawBall(context, body, alpha) {
     const level = LEVELS[body.gameLevel];
+    const appearance = getLevelAppearance(body.gameLevel, this.appearanceSelection);
     const radius = body.circleRadius;
     const { x, y } = body.position;
 
@@ -521,10 +525,30 @@ export class MergeMilkFrogGame {
     context.fillStyle = gradient;
     context.fillRect(-radius, -radius, radius * 2, radius * 2);
 
-    const imageState = this.getImage(level.image);
-    if (imageState.loaded) {
-      drawCoverImage(context, imageState.image, radius);
+    let drewAppearance = false;
+    if (appearance.animation) {
+      const animationState = this.getImage(appearance.animation.sheet, this.animationSheetCache);
+      if (animationState.loaded) {
+        drawAnimationFrame(context, animationState.image, appearance.animation, radius, performance.now());
+        drewAppearance = true;
+      }
     } else {
+      const imageState = this.getImage(appearance.image);
+      if (imageState.loaded) {
+        drawCoverImage(context, imageState.image, radius);
+        drewAppearance = true;
+      }
+    }
+
+    if (!drewAppearance && appearance.id === 'variant') {
+      const originalState = this.getImage(level.appearances.original.image);
+      if (originalState.loaded) {
+        drawCoverImage(context, originalState.image, radius);
+        drewAppearance = true;
+      }
+    }
+
+    if (!drewAppearance) {
       context.fillStyle = body.gameLevel >= 7 ? '#fff9db' : '#24452f';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
@@ -540,8 +564,8 @@ export class MergeMilkFrogGame {
     context.restore();
   }
 
-  getImage(source) {
-    if (this.imageCache.has(source)) return this.imageCache.get(source);
+  getImage(source, cache = this.imageCache) {
+    if (cache.has(source)) return cache.get(source);
 
     const state = { image: new Image(), loaded: false, failed: false };
     state.image.addEventListener('load', () => {
@@ -551,7 +575,7 @@ export class MergeMilkFrogGame {
       state.failed = true;
     }, { once: true });
     state.image.src = source;
-    this.imageCache.set(source, state);
+    cache.set(source, state);
     return state;
   }
 
@@ -562,6 +586,7 @@ export class MergeMilkFrogGame {
 
   paintMiniBall(element, levelIndex) {
     const level = LEVELS[levelIndex];
+    const appearance = getLevelAppearance(levelIndex, this.appearanceSelection);
     element.replaceChildren();
     element.style.setProperty('--ball-color', level.color);
 
@@ -570,9 +595,16 @@ export class MergeMilkFrogGame {
     element.append(label);
 
     const image = new Image();
-    image.alt = `第 ${level.label} 级`;
+    let fallbackAttempted = false;
+    image.alt = `第 ${level.label} 级 · ${appearance.name}`;
     image.addEventListener('load', () => element.append(image), { once: true });
-    image.src = level.image;
+    image.addEventListener('error', () => {
+      if (appearance.id === 'variant' && !fallbackAttempted) {
+        fallbackAttempted = true;
+        image.src = level.appearances.original.image;
+      }
+    });
+    image.src = appearance.preview;
   }
 
   playMergeSound(levelIndex) {
@@ -686,6 +718,7 @@ export class MergeMilkFrogGame {
       this.render.textures = {};
     }
     this.imageCache.clear();
+    this.animationSheetCache.clear();
     if (this.runner) Runner.stop(this.runner);
     if (this.engine) {
       Events.off(this.engine);
@@ -704,11 +737,53 @@ function wallOptions() {
 }
 
 function drawCoverImage(context, image, radius) {
+  drawCoverImageRegion(
+    context,
+    image,
+    0,
+    0,
+    image.naturalWidth,
+    image.naturalHeight,
+    radius
+  );
+}
+
+function drawAnimationFrame(context, sheet, animation, radius, now) {
+  const duration = Math.max(1, animation.durationMs);
+  const progress = (now % duration) / duration;
+  const frameIndex = Math.min(
+    animation.frameCount - 1,
+    Math.floor(progress * animation.frameCount)
+  );
+  const sourceX = (frameIndex % animation.columns) * animation.frameWidth;
+  const sourceY = Math.floor(frameIndex / animation.columns) * animation.frameHeight;
+  drawCoverImageRegion(
+    context,
+    sheet,
+    sourceX,
+    sourceY,
+    animation.frameWidth,
+    animation.frameHeight,
+    radius
+  );
+}
+
+function drawCoverImageRegion(context, image, sourceX, sourceY, sourceWidth, sourceHeight, radius) {
   const size = radius * 2;
-  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  context.drawImage(image, -width / 2, -height / 2, width, height);
+  const scale = Math.max(size / sourceWidth, size / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    -width / 2,
+    -height / 2,
+    width,
+    height
+  );
 }
 
 function lighten(hex, amount) {
