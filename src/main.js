@@ -40,7 +40,7 @@ function showModeSelect() {
       ${socialLinks()}
       <section class="mode-card" aria-labelledby="mode-title">
         <p class="eyebrow">全新双模式挑战</p>
-        <h1 id="mode-title">合成大奶蛙</h1>
+        <h1 id="mode-title">合成大竹头</h1>
         <p class="mode-intro">选择玩法开始挑战，两种模式拥有独立的在线排行榜。</p>
         <div class="mode-grid">
           <button class="mode-option" type="button" data-mode="classic">
@@ -50,7 +50,7 @@ function showModeSelect() {
           </button>
           <button class="mode-option endless" type="button" data-mode="endless">
             <span class="mode-badge">无尽模式</span>
-            <strong>最大球合成后清场</strong>
+            <strong>最大竹头合成后清场</strong>
             <small>两个第 10 级消失，奖励 1024 分并继续挑战。</small>
           </button>
         </div>
@@ -382,10 +382,13 @@ function renderLeaderboard(container, data) {
 function socialLinks() {
   return `
     <nav class="social-links" aria-label="站外链接">
-      <a class="social-link github-link" href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看 GitHub 源码" title="查看 GitHub 源码">
+      <a class="social-link github-link" href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看原版 GitHub 源码" title="原版 GitHub 源码">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" /></svg>
       </a>
-      <a class="social-link bilibili-link" href="https://space.bilibili.com/305672036" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看 GeForceRTX8080ti 的哔哩哔哩主页" title="查看我的哔哩哔哩主页">
+      <a class="social-link github-link" href="https://github.com/KrisCheeRay" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看修改版 GitHub 主页" title="修改版 GitHub 主页">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" /></svg>
+      </a>
+      <a class="social-link bilibili-link" href="https://space.bilibili.com/596624087" target="_blank" rel="noopener noreferrer" aria-label="在新标签页查看我的哔哩哔哩主页" title="我的哔哩哔哩主页">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 2.6a1 1 0 0 1 1.4.1L12 5l2.4-2.3a1 1 0 1 1 1.4 1.4L14.9 5H18a3.5 3.5 0 0 1 3.5 3.5v8A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-8A3.5 3.5 0 0 1 6 5h3.1l-.9-.9a1 1 0 0 1 0-1.5ZM6 7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 6 18h12a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 18 7H6Zm2.5 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm7 0a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm-6.7 4.2a1 1 0 0 1 1.4 0c1 1 2.6 1 3.6 0a1 1 0 1 1 1.4 1.4 4.6 4.6 0 0 1-6.4 0 1 1 0 0 1 0-1.4Z" /></svg>
       </a>
     </nav>

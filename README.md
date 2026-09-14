@@ -1,4 +1,4 @@
-# 合成大奶蛙
+# 合成大竹头
 
 一个基于 Vite、原生 JavaScript 和 Matter.js 开发的十级合成网页小游戏。
 

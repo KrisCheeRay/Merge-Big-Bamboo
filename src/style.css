@@ -930,7 +930,7 @@ h1 {
 
   .hero-bar {
     gap: 10px;
-    padding: 11px 94px 10px 12px;
+    padding: 55px 12px 10px;
   }
 
   .social-links {
@@ -1128,4 +1128,192 @@ h1 {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Purple theme and the photo-backed mode selection page. */
+body {
+  background: #eee5f7;
+  color: #3e2452;
+}
+
+.mode-page {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.mode-page::before,
+.mode-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mode-page::before {
+  z-index: -2;
+  background: url('../assets/home-background.webp') center / cover no-repeat;
+}
+
+.mode-page::after {
+  z-index: -1;
+  background: rgba(67, 28, 91, 0.42);
+}
+
+.mode-card,
+.game-card {
+  border-color: rgba(90, 45, 120, 0.28);
+  background: rgba(250, 246, 255, 0.9);
+  box-shadow: 0 28px 70px rgba(54, 22, 76, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.hero-bar {
+  border-bottom-color: rgba(104, 57, 133, 0.18);
+  background: rgba(247, 239, 255, 0.92);
+}
+
+.control-bar {
+  border-bottom-color: rgba(104, 57, 133, 0.16);
+  background: #f6effd;
+}
+
+h1,
+.modal-panel h2,
+.score-item strong {
+  color: #4b2366;
+}
+
+.eyebrow,
+.mode-badge,
+.primary-button,
+.leaderboard-tabs button.active {
+  background: #70408d;
+  color: #fff;
+}
+
+.eyebrow {
+  background: transparent;
+  color: #8b5aa5;
+}
+
+.tagline,
+.mode-intro,
+.mode-note,
+.modal-panel p,
+.submit-status,
+.loading-text,
+.leaderboard-footer {
+  color: #735c82;
+}
+
+.mode-option,
+.secondary-wide-button,
+.appearance-option,
+.leaderboard-tabs button,
+.modal-close {
+  border-color: rgba(112, 64, 141, 0.2);
+  background: #f4ecfc;
+  color: #56316d;
+}
+
+.mode-option:hover,
+.secondary-wide-button:hover,
+.appearance-option:hover {
+  border-color: rgba(112, 64, 141, 0.52);
+  background: #eadcf7;
+}
+
+.mode-option.endless,
+.appearance-option.selected {
+  background: #e8d9f5;
+}
+
+.mode-option small,
+.score-item span {
+  color: #806b8c;
+}
+
+.social-link {
+  border-color: rgba(112, 64, 141, 0.22);
+  background: rgba(250, 246, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(54, 22, 76, 0.18);
+  color: #70408d;
+}
+
+.github-link:hover {
+  background: #4f2869;
+  color: #fff;
+}
+
+.social-link:focus-visible,
+.appearance-option:focus-visible,
+.rank-scroll:focus-visible {
+  outline-color: rgba(112, 64, 141, 0.42);
+}
+
+.bilibili-link {
+  color: #cf5f8a;
+}
+
+.bilibili-link:hover {
+  background: #cf5f8a;
+  color: #fff;
+}
+
+.primary-button:hover,
+.leaderboard-tabs button.active:hover {
+  background: #5b2f77;
+}
+
+.app-modal {
+  background: rgba(45, 19, 60, 0.68);
+}
+
+.modal-panel {
+  border-color: rgba(255, 255, 255, 0.78);
+  background: #faf6ff;
+  box-shadow: 0 22px 55px rgba(54, 22, 76, 0.3);
+}
+
+.nickname-panel input,
+.rank-scroll {
+  border-color: rgba(112, 64, 141, 0.24);
+  color: #3e2452;
+}
+
+.nickname-panel input:focus {
+  border-color: #8d5aa8;
+  box-shadow: 0 0 0 3px rgba(112, 64, 141, 0.16);
+}
+
+.appearance-level-card {
+  border-color: rgba(112, 64, 141, 0.16);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.appearance-level-title {
+  color: #604074;
+}
+
+.gif-badge {
+  background: #e5cbed;
+  color: #6d397e;
+}
+
+.appearance-option.selected {
+  border-color: #70408d;
+  box-shadow: 0 0 0 3px rgba(112, 64, 141, 0.13);
+}
+
+.appearance-thumb {
+  background: #f0e3fa;
+  box-shadow: 0 3px 9px rgba(54, 22, 76, 0.16);
+}
+
+.appearance-footer,
+.leaderboard-footer {
+  border-top-color: rgba(112, 64, 141, 0.16);
+}
+
+.rank-row {
+  border-bottom-color: rgba(112, 64, 141, 0.12);
 }

@@ -69,7 +69,7 @@ export class MergeMilkFrogGame {
     const modeLabel = isEndless ? '无尽模式' : '经典模式';
     const tagline = isEndless
       ? `两个第 10 级会消失并奖励 ${ENDLESS_CLEAR_SCORE} 分，坚持到最后。`
-      : '把相同的小奶蛙碰到一起，合成第 10 级即可通关。';
+      : '把相同的小竹头碰到一起，合成第 10 级即可通关。';
 
     this.root.innerHTML = `
       <main class="page-shell">
@@ -79,8 +79,20 @@ export class MergeMilkFrogGame {
             href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="在新标签页查看 GitHub 源码"
-            title="查看 GitHub 源码"
+            aria-label="在新标签页查看原版 GitHub 源码"
+            title="原版 GitHub 源码"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" />
+            </svg>
+          </a>
+          <a
+            class="social-link github-link"
+            href="https://github.com/KrisCheeRay"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="在新标签页查看修改版 GitHub 主页"
+            title="修改版 GitHub 主页"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 .7C5.7.7.7 5.8.7 12.2c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.3.8-.6v-2.2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.5-.3-5.2-1.3-5.2-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3 0 0 1-.3 3.2 1.2a10.8 10.8 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.5.2 2.7.1 3 .8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.2 5.7.4.4.8 1.1.8 2.1v3.1c0 .4.2.7.8.6a11.6 11.6 0 0 0 7.8-10.9C23.3 5.8 18.3.7 12 .7Z" />
@@ -88,22 +100,22 @@ export class MergeMilkFrogGame {
           </a>
           <a
             class="social-link bilibili-link"
-            href="https://space.bilibili.com/305672036"
+            href="https://space.bilibili.com/9840636"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="在新标签页查看 GeForceRTX8080ti 的哔哩哔哩主页"
-            title="查看我的哔哩哔哩主页"
+            aria-label="在新标签页查看我的哔哩哔哩主页"
+            title="我的哔哩哔哩主页"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M8.2 2.6a1 1 0 0 1 1.4.1L12 5l2.4-2.3a1 1 0 1 1 1.4 1.4L14.9 5H18a3.5 3.5 0 0 1 3.5 3.5v8A3.5 3.5 0 0 1 18 20H6a3.5 3.5 0 0 1-3.5-3.5v-8A3.5 3.5 0 0 1 6 5h3.1l-.9-.9a1 1 0 0 1 0-1.5ZM6 7a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 6 18h12a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 18 7H6Zm2.5 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm7 0a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1Zm-6.7 4.2a1 1 0 0 1 1.4 0c1 1 2.6 1 3.6 0a1 1 0 1 1 1.4 1.4 4.6 4.6 0 0 1-6.4 0 1 1 0 0 1 0-1.4Z" />
             </svg>
           </a>
         </nav>
-        <section class="game-card" aria-label="合成大奶蛙游戏">
+        <section class="game-card" aria-label="合成大竹头游戏">
           <header class="hero-bar">
             <div class="brand-block">
               <p class="eyebrow">${modeLabel} · 十级合成挑战</p>
-              <h1>合成大奶蛙</h1>
+              <h1>合成大竹头</h1>
               <p class="tagline">${tagline}</p>
             </div>
             <div class="score-board" aria-label="分数信息">
@@ -671,10 +683,10 @@ export class MergeMilkFrogGame {
     const isNewBest = this.score > this.initialBestScore;
     this.root.querySelector('#overlay-kicker').textContent = isWin
       ? '第 10 级达成'
-      : this.mode === 'endless' ? '无尽挑战结束' : '奶蛙堆得太高啦';
+      : this.mode === 'endless' ? '无尽挑战结束' : '竹头堆得太高啦';
     this.root.querySelector('#overlay-title').textContent = isWin ? '恭喜通关！' : '游戏结束';
     this.root.querySelector('#overlay-message').textContent = isWin
-      ? '你成功合成了标准大笑奶龙。'
+      ? '你成功合成了标准大竹头。'
       : '球体稳定超过警戒线 1.7 秒，本局结束。';
     this.root.querySelector('#final-score').textContent = String(this.score);
     this.root.querySelector('#result-best').textContent = isNewBest
