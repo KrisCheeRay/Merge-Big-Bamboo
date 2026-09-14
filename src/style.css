@@ -919,7 +919,11 @@ h1 {
 
 @media (max-width: 680px) {
   .page-shell {
-    padding: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 0 0 24px;
   }
 
   .game-card {
@@ -977,6 +981,13 @@ h1 {
     flex-wrap: wrap;
     gap: 8px;
     padding: 7px 9px;
+  }
+
+  .game-stage {
+    height: min(500px, calc(100svh - 250px));
+    min-height: 360px;
+    aspect-ratio: auto;
+    touch-action: pan-y;
   }
 
   .game-actions {

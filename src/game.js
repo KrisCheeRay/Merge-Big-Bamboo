@@ -200,6 +200,21 @@ export class MergeMilkFrogGame {
   bindUi() {
     this.onPointerMove = (event) => {
       if (this.isFinished || !this.width) return;
+
+      // Let a vertical touch gesture belong to the page instead of moving the aim.
+      if (event.pointerType === 'touch' && this.pointerState) {
+        const dx = event.clientX - this.pointerState.startX;
+        const dy = event.clientY - this.pointerState.startY;
+        if (!this.pointerState.gesture && Math.hypot(dx, dy) > 8) {
+          this.pointerState.gesture = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+          if (this.pointerState.gesture === 'horizontal') {
+            this.canvasHost.setPointerCapture?.(event.pointerId);
+          }
+        }
+        if (this.pointerState.gesture === 'vertical') return;
+        if (this.pointerState.gesture === 'horizontal') event.preventDefault();
+      }
+
       const rect = this.canvasHost.getBoundingClientRect();
       const radius = getRadius(this.currentLevel);
       this.aimX = clamp(event.clientX - rect.left, radius + 8, this.width - radius - 8);
@@ -207,22 +222,41 @@ export class MergeMilkFrogGame {
 
     this.onPointerDown = (event) => {
       if (this.isFinished) return;
+      if (!event.isPrimary) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      event.preventDefault();
+      this.pointerState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        gesture: null,
+      };
+      if (event.pointerType === 'mouse') {
+        event.preventDefault();
+        this.canvasHost.setPointerCapture?.(event.pointerId);
+      }
       this.onPointerMove(event);
-      this.canvasHost.setPointerCapture?.(event.pointerId);
     };
 
     this.onPointerUp = (event) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return;
+      const state = this.pointerState;
+      if (!state || state.pointerId !== event.pointerId) return;
+      this.pointerState = null;
+      if (this.canvasHost.hasPointerCapture?.(event.pointerId)) {
+        this.canvasHost.releasePointerCapture(event.pointerId);
+      }
+      if (event.pointerType === 'touch' && state.gesture === 'vertical') return;
       event.preventDefault();
       this.onPointerMove(event);
-      this.canvasHost.releasePointerCapture?.(event.pointerId);
       this.dropBall();
     };
 
     this.onPointerCancel = (event) => {
-      this.canvasHost.releasePointerCapture?.(event.pointerId);
+      if (this.pointerState?.pointerId !== event.pointerId) return;
+      this.pointerState = null;
+      if (this.canvasHost.hasPointerCapture?.(event.pointerId)) {
+        this.canvasHost.releasePointerCapture(event.pointerId);
+      }
     };
 
     this.canvasHost.addEventListener('pointermove', this.onPointerMove);
