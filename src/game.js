@@ -457,6 +457,8 @@ export class MergeMilkFrogGame {
       return;
     }
 
+    // Coalesce cascading merges into one audio cue for this physics update.
+    let mergeSoundLevel = -1;
     while (this.mergeQueue.length) {
       const { a, b, level, isEndlessClear } = this.mergeQueue.shift();
       const bodies = Composite.allBodies(this.engine.world);
@@ -467,7 +469,7 @@ export class MergeMilkFrogGame {
       if (isEndlessClear) {
         this.score += ENDLESS_CLEAR_SCORE;
         this.updateScore();
-        this.playMergeSound(LEVEL_COUNT - 1);
+        mergeSoundLevel = Math.max(mergeSoundLevel, LEVEL_COUNT - 1);
         this.wakeAllBalls();
         continue;
       }
@@ -489,7 +491,7 @@ export class MergeMilkFrogGame {
 
       this.score += getMergeScore(level);
       this.updateScore();
-      this.playMergeSound(level);
+      mergeSoundLevel = Math.max(mergeSoundLevel, level);
 
       if (level === LEVEL_COUNT - 1 && this.mode === 'classic') {
         this.finishGame('win');
@@ -497,6 +499,7 @@ export class MergeMilkFrogGame {
       }
     }
 
+    if (mergeSoundLevel >= 0) this.playMergeSound(mergeSoundLevel);
     this.mergingBodyIds.clear();
   }
 
