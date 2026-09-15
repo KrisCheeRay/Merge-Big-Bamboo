@@ -1,6 +1,9 @@
 import { loadPlayerProfile, savePlayerProfile } from './config.js';
 
-const API_BASE = `${import.meta.env.BASE_URL}api`;
+const configuredApiBase = import.meta.env.VITE_LEADERBOARD_API_BASE?.trim();
+const API_BASE = configuredApiBase
+  ? configuredApiBase.replace(/\/$/, '')
+  : `${import.meta.env.BASE_URL}api`;
 let memoryProfile = loadPlayerProfile();
 
 export function getPlayerProfile() {

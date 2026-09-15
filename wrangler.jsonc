@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "bamboo-leaderboard-api",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-09-15",
+  "d1_databases": [
+    {
+      "binding": "bamboo_leaderboard",
+      "database_name": "bamboo-leaderboard",
+      "database_id": "316fb02f-3bb1-48e9-a847-2e2010075383"
+    }
+  ]
+}

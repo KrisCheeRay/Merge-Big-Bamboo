@@ -26,6 +26,7 @@ const {
 } = Matter;
 
 const REFERENCE_STAGE_WIDTH = 520;
+const MOBILE_RADIUS_BOOST = 1.1;
 
 export class MergeMilkFrogGame {
   constructor(root, options = {}) {
@@ -366,7 +367,8 @@ export class MergeMilkFrogGame {
   }
 
   getRadiusScale(width = this.width) {
-    return Math.min(1, Math.max(0.6, (width || REFERENCE_STAGE_WIDTH) / REFERENCE_STAGE_WIDTH));
+    const responsiveScale = ((width || REFERENCE_STAGE_WIDTH) / REFERENCE_STAGE_WIDTH) * MOBILE_RADIUS_BOOST;
+    return Math.min(1, Math.max(0.6, responsiveScale));
   }
 
   getScaledRadius(level) {

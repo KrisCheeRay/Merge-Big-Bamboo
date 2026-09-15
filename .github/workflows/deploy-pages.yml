@@ -32,6 +32,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_LEADERBOARD_API_BASE: ${{ vars.LEADERBOARD_API_BASE }}
         run: npm run build
 
       - name: Setup Pages
