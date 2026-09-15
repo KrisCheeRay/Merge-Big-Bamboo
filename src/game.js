@@ -51,6 +51,8 @@ export class MergeMilkFrogGame {
     this.animationSheetCache = new Map();
     this.failedSounds = new Set();
     this.activeAudio = new Set();
+    this.mergeSoundCooldownMs = 350;
+    this.lastMergeSoundAt = -Infinity;
     this.audioPreferences = loadAudioPreferences();
     this.dropTimer = null;
   }
@@ -673,11 +675,19 @@ export class MergeMilkFrogGame {
   }
 
   playMergeSound(levelIndex) {
-    const source = levelIndex === LEVEL_COUNT - 1
+    const isWinSound = levelIndex === LEVEL_COUNT - 1;
+    const source = isWinSound
       ? WIN_SOUND
       : MERGE_SOUND_POOL[Math.floor(Math.random() * MERGE_SOUND_POOL.length)];
     if (!source || this.failedSounds.has(source)) return;
     if (!this.audioPreferences.enabled || this.audioPreferences.volume <= 0) return;
+
+    // Throttle ordinary merge cues across nearby physics updates. The win cue
+    // is intentionally exempt so reaching level 10 is always audible.
+    const now = performance.now();
+    if (!isWinSound && now - this.lastMergeSoundAt < this.mergeSoundCooldownMs) return;
+    if (isWinSound) this.stopAllAudio();
+    this.lastMergeSoundAt = now;
 
     const audio = new Audio(source);
     audio.preload = 'auto';
