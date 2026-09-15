@@ -984,8 +984,7 @@ h1 {
   }
 
   .game-stage {
-    height: min(500px, calc(100svh - 250px));
-    min-height: 360px;
+    height: clamp(520px, 150vw, 650px);
     aspect-ratio: auto;
     touch-action: pan-y;
   }
