@@ -25,6 +25,8 @@ const {
   Events,
 } = Matter;
 
+const REFERENCE_STAGE_WIDTH = 520;
+
 export class MergeMilkFrogGame {
   constructor(root, options = {}) {
     this.root = root;
@@ -216,7 +218,7 @@ export class MergeMilkFrogGame {
       }
 
       const rect = this.canvasHost.getBoundingClientRect();
-      const radius = getRadius(this.currentLevel);
+      const radius = this.getScaledRadius(this.currentLevel);
       this.aimX = clamp(event.clientX - rect.left, radius + 8, this.width - radius - 8);
     };
 
@@ -346,8 +348,12 @@ export class MergeMilkFrogGame {
     if (previousWidth && previousHeight) {
       const scaleX = this.width / previousWidth;
       const scaleY = this.height / previousHeight;
+      const radiusScale = this.getRadiusScale(this.width) / this.getRadiusScale(previousWidth);
       for (const body of Composite.allBodies(this.engine.world)) {
         if (!body.isGameBall) continue;
+        if (Math.abs(radiusScale - 1) > 0.001) {
+          Body.scale(body, radiusScale, radiusScale);
+        }
         Body.setPosition(body, {
           x: clamp(body.position.x * scaleX, body.circleRadius, this.width - body.circleRadius),
           y: Math.min(body.position.y * scaleY, this.height - body.circleRadius),
@@ -357,6 +363,14 @@ export class MergeMilkFrogGame {
 
     this.createWalls();
     this.aimX = clamp(this.aimX || this.width / 2, 30, this.width - 30);
+  }
+
+  getRadiusScale(width = this.width) {
+    return Math.min(1, Math.max(0.6, (width || REFERENCE_STAGE_WIDTH) / REFERENCE_STAGE_WIDTH));
+  }
+
+  getScaledRadius(level) {
+    return Math.round(getRadius(level) * this.getRadiusScale());
   }
 
   createWalls() {
@@ -377,7 +391,7 @@ export class MergeMilkFrogGame {
     if (!this.canDrop || this.isFinished) return;
 
     const level = this.currentLevel;
-    const radius = getRadius(level);
+    const radius = this.getScaledRadius(level);
     const x = clamp(this.aimX, radius + 4, this.width - radius - 4);
     const y = Math.max(radius + 12, this.dangerY - radius - 18);
     Composite.add(this.engine.world, this.createBall(x, y, level));
@@ -394,7 +408,7 @@ export class MergeMilkFrogGame {
   }
 
   createBall(x, y, level) {
-    const radius = getRadius(level);
+    const radius = this.getScaledRadius(level);
     const ball = Bodies.circle(x, y, radius, {
       restitution: 0.24,
       friction: 0.045,
@@ -528,7 +542,7 @@ export class MergeMilkFrogGame {
     context.setLineDash([]);
 
     if (!this.isFinished) {
-      const radius = getRadius(this.currentLevel);
+      const radius = this.getScaledRadius(this.currentLevel);
       const y = Math.max(radius + 12, this.dangerY - radius - 18);
       context.strokeStyle = 'rgba(45, 106, 79, 0.26)';
       context.lineWidth = 1.5;
