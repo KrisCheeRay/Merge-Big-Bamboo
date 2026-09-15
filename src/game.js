@@ -51,7 +51,7 @@ export class MergeMilkFrogGame {
     this.animationSheetCache = new Map();
     this.failedSounds = new Set();
     this.activeAudio = new Set();
-    this.mergeSoundCooldownMs = 350;
+    this.mergeSoundCooldownMs = 1500;
     this.lastMergeSoundAt = -Infinity;
     this.audioPreferences = loadAudioPreferences();
     this.dropTimer = null;
@@ -77,7 +77,7 @@ export class MergeMilkFrogGame {
       : '把相同的小竹头碰到一起，合成第 10 级即可通关。';
 
     this.root.innerHTML = `
-      <main class="page-shell">
+      <main class="page-shell game-page">
         <nav class="social-links" aria-label="站外链接">
           <a
             class="social-link github-link"

@@ -1146,6 +1146,36 @@ body {
   color: #3e2452;
 }
 
+/* Keep the game view visually distinct from the mode-selection home page. */
+.game-page {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.game-page::before,
+.game-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.game-page::before {
+  z-index: -2;
+  background: url('../assets/game-background.webp') center / cover no-repeat;
+}
+
+.game-page::after {
+  z-index: -1;
+  background: rgba(54, 25, 72, 0.28);
+}
+
+.game-page .game-stage {
+  background:
+    linear-gradient(rgba(250, 246, 255, 0.66), rgba(247, 239, 255, 0.76)),
+    url('../assets/game-background.webp') center 36% / cover no-repeat;
+}
+
 .mode-page {
   isolation: isolate;
   overflow: hidden;
