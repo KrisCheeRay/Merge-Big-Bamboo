@@ -1,7 +1,6 @@
 export const LEVEL_COUNT = 10;
 export const ENDLESS_CLEAR_SCORE = 1024;
 export const AUDIO_PREFERENCES_KEY = 'merge-big-milk-frog-audio-v1';
-export const PLAYER_PROFILE_KEY = 'merge-big-milk-frog-player-v1';
 export const APPEARANCE_SELECTION_KEY = 'merge-big-milk-frog-appearance-v1';
 const BEST_SCORE_KEY_PREFIX = 'merge-big-milk-frog-best-score-v2';
 
@@ -21,7 +20,7 @@ const COLORS = [
 const VARIANT_DEFINITIONS = [
   {
     name: '动态竹头1',
-    image: 'level-1-dance.gif',
+    image: 'level-1-dance.webp',
     animation: {
       sheet: 'level-1-dance-sheet.webp',
       frameWidth: 548,
@@ -33,7 +32,7 @@ const VARIANT_DEFINITIONS = [
   },
   {
     name: '动态竹头2',
-    image: 'level-2-sad.gif',
+    image: 'level-2-sad.webp',
     animation: {
       sheet: 'level-2-sad-sheet.webp',
       frameWidth: 480,
@@ -45,7 +44,7 @@ const VARIANT_DEFINITIONS = [
   },
   {
     name: '动态竹头3',
-    image: 'level-3-angry.gif',
+    image: 'level-3-angry.webp',
     animation: {
       sheet: 'level-3-angry-sheet.webp',
       frameWidth: 604,
@@ -57,7 +56,7 @@ const VARIANT_DEFINITIONS = [
   },
   {
     name: '动态竹头4',
-    image: 'level-4-dog.gif',
+    image: 'level-4-dog.webp',
     animation: {
       sheet: 'level-4-dog-sheet.webp',
       frameWidth: 300,
@@ -69,7 +68,7 @@ const VARIANT_DEFINITIONS = [
   },
   {
     name: '动态竹头5',
-    image: 'level-5-fish.gif',
+    image: 'level-5-fish.webp',
     animation: {
       sheet: 'level-5-fish-sheet .webp',
       frameWidth: 480,
@@ -85,7 +84,7 @@ const VARIANT_DEFINITIONS = [
   { name: '竹头9', image: 'level-9-angel.png' },
   {
     name: '动态竹头10',
-    image: 'level-10-laugh.gif',
+    image: 'level-10-laugh.webp',
     animation: {
       sheet: 'level-10-laugh-sheet.webp',
       frameWidth: 528,
@@ -170,9 +169,7 @@ export function saveAppearanceSelection(selection) {
   const normalized = normalizeAppearanceSelection(selection);
   try {
     localStorage.setItem(APPEARANCE_SELECTION_KEY, JSON.stringify(normalized));
-  } catch {
-    // 浏览器禁用本地存储时，外观选择仅在当前页面内有效。
-  }
+  } catch {}
   return normalized;
 }
 
@@ -208,32 +205,7 @@ export function saveBestScore(mode, score) {
       `${BEST_SCORE_KEY_PREFIX}-${mode}`,
       String(Math.max(0, Math.floor(score)))
     );
-  } catch {
-    // 浏览器禁用本地存储时，最高分仅在当前页面内有效。
-  }
-}
-
-export function loadPlayerProfile() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(PLAYER_PROFILE_KEY) || '{}');
-    return {
-      playerId: typeof saved.playerId === 'string' ? saved.playerId : '',
-      nickname: typeof saved.nickname === 'string' ? saved.nickname : '',
-    };
-  } catch {
-    return { playerId: '', nickname: '' };
-  }
-}
-
-export function savePlayerProfile(profile) {
-  try {
-    localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify({
-      playerId: profile.playerId || '',
-      nickname: profile.nickname || '',
-    }));
-  } catch {
-    // 浏览器禁用本地存储时，身份仅在当前页面内有效。
-  }
+  } catch {}
 }
 
 export function loadAudioPreferences() {
@@ -255,9 +227,7 @@ export function saveAudioPreferences(preferences) {
       enabled: preferences.enabled !== false,
       volume: clamp(Number(preferences.volume), 0, 1),
     }));
-  } catch {
-    // 浏览器禁用本地存储时，偏好仍在当前页面内生效。
-  }
+  } catch {}
 }
 
 function clamp(value, min, max) {

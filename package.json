@@ -1,24 +1,18 @@
 {
-  "name": "merge-big-milk-frog",
+  "name": "merge-bamboo",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "server": "node server/index.js",
-    "worker:dev": "wrangler dev",
-    "db:local": "wrangler d1 migrations apply bamboo_leaderboard --local",
-    "db:remote": "wrangler d1 migrations apply bamboo_leaderboard --remote",
-    "worker:deploy": "wrangler deploy",
-    "test:worker": "node worker/index.test.js",
     "build": "vite build",
+    "build:site": "node fanpage/build-site.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "matter-js": "^0.20.0"
   },
   "devDependencies": {
-    "vite": "^8.2.0",
-    "wrangler": "^4.131.2"
+    "vite": "^8.2.0"
   }
 }

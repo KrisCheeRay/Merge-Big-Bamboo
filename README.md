@@ -18,6 +18,8 @@
 - 合成音效开关及总音量控制
 - 第 2～9 级随机播放现有合成音效
 - 第 10 级固定播放通关音效
+- 经典和无尽模式分别保存本机最高分
+- 独立粉丝主页与游戏入口
 - 响应式奶黄与草绿色界面
 
 ## 本地运行
@@ -27,54 +29,24 @@ npm install
 npm run dev
 ```
 
-生产构建：
+完整网站生产构建：
 
 ```bash
-npm run build
+npm run build:site
 npm run preview
 ```
 
-## 排行榜 API
+构建结果位于 `dist`：主页在 `/`，游戏在 `/game/`。本版本是纯静态网站，不需要排行榜 API、数据库或云函数。
 
-排行榜页面和成绩提交前端已经接入 API。GitHub Pages 只负责静态网页，排行榜 API 需要单独运行。
+## GitHub Pages
 
-本地同时运行前端和 API：
-
-```bash
-npm run server
-npm run dev
-```
-
-Vite 会把网页的 `/api` 请求代理到 `http://127.0.0.1:8787`。成绩默认保存在未提交的 `server/data.json` 中。
-
-部署到线上服务器后，在构建 GitHub Pages 前设置环境变量：
+仓库已包含 GitHub Actions 工作流。推送到 `main` 后，会自动执行完整网站构建并部署 `dist`。
 
 ```bash
-VITE_LEADERBOARD_API_BASE=https://你的-api-域名/api
+git add .
+git commit -m "Deploy static fan site and game"
+git push origin main
 ```
-
-Cloudflare Worker + D1 的配置是 `wrangler.jsonc`，接口是 `worker/index.js`，建表文件是 `migrations/0001_leaderboard.sql`。本地测试时先建本地表，再开 Worker：
-
-```bash
-npm run db:local
-npm run worker:dev
-```
-
-运行 `db:local` 时 Wrangler 会询问是否继续应用迁移；选择 **Yes**（用方向键选择后按回车，或根据提示输入 `y`）。如果最后显示 `... no`，迁移并未执行，排行榜会因缺少 `sessions`、`scores` 表而报错。确认迁移成功后再刷新网页。
-
-另开终端运行 `npm run dev`，Vite 会将 `/api` 请求转发到本地 Worker 的 8787 端口。不要同时运行 `npm run server`，因为两个后端使用同一端口。本地 D1 数据不会写入线上数据库。
-
-上线时先确认 Wrangler 已登录，然后按顺序执行：
-
-```bash
-npx wrangler whoami
-npm run db:remote
-npm run worker:deploy
-```
-
-`db:remote` 会要求确认后把迁移应用到已创建的线上 `bamboo-leaderboard`。部署完成后，从终端复制 Worker 的 `https://...workers.dev` 地址。在 GitHub 仓库的 **Settings → Secrets and variables → Actions → Variables** 中设置 `LEADERBOARD_API_BASE` 为 `https://你的-worker-地址/api`，然后推送本次代码到 `main`。现有 GitHub Pages workflow 会读取该变量重新构建网页。打开线上网页测试排行榜、提交分数和刷新后排名。
-
-原先的 `npm run server` 保留供纯本地 Node 测试；它的 `server/data.json` 不会自动迁移到 D1。排行榜的分数来自浏览器，当前 API 只校验类型、范围和单次提交凭证，不能证明真实游戏过程，因此公开排行榜仍可能被伪造成绩污染。不要把 API 密钥或数据库密码写进前端代码。
 
 ## 素材目录
 

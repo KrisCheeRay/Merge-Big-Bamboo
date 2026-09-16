@@ -95,6 +95,19 @@ button {
   fill: currentColor;
 }
 
+.home-link svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.home-link:hover {
+  background: #70408d;
+  color: #fff;
+}
+
 .game-card {
   width: min(100%, 520px);
   display: grid;
@@ -619,49 +632,6 @@ h1 {
   line-height: 1.6;
 }
 
-.nickname-panel input {
-  width: 100%;
-  min-height: 48px;
-  margin: 8px 0 4px;
-  padding: 0 14px;
-  border: 2px solid rgba(70, 123, 76, 0.24);
-  border-radius: 14px;
-  outline: none;
-  background: white;
-  color: #24452f;
-}
-
-.nickname-panel input:focus {
-  border-color: #63a66f;
-  box-shadow: 0 0 0 3px rgba(99, 166, 111, 0.16);
-}
-
-.form-error {
-  min-height: 20px;
-  margin-bottom: 10px;
-  color: #c15353 !important;
-  font-size: 12px;
-}
-
-.modal-actions {
-  justify-content: flex-end;
-}
-
-.modal-actions .primary-button {
-  width: auto;
-  min-width: 130px;
-  padding: 0 20px;
-}
-
-.leaderboard-panel {
-  width: min(100%, 560px);
-  height: min(760px, calc(100dvh - 44px));
-  min-height: min(620px, calc(100dvh - 44px));
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  overflow: hidden;
-}
-
 .appearance-panel {
   width: min(100%, 900px);
   max-height: calc(100dvh - 44px);
@@ -782,14 +752,6 @@ h1 {
   padding: 0 22px;
 }
 
-.leaderboard-heading,
-.leaderboard-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .modal-close {
   width: 40px;
   height: 40px;
@@ -799,122 +761,6 @@ h1 {
   color: #456c4c;
   font-size: 25px;
   line-height: 1;
-}
-
-.leaderboard-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin: 18px 0 14px;
-}
-
-.leaderboard-tabs button {
-  min-height: 42px;
-  border: 1px solid rgba(53, 103, 65, 0.18);
-  border-radius: 12px;
-  background: #f0f2d8;
-  color: #62755b;
-  font-weight: 800;
-}
-
-.leaderboard-tabs button.active {
-  background: #4f9660;
-  color: white;
-}
-
-.leaderboard-body {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  overflow: hidden;
-}
-
-.rank-scroll {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  border: 1px solid rgba(70, 123, 76, 0.13);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.32);
-  -webkit-overflow-scrolling: touch;
-}
-
-.rank-scroll:focus-visible {
-  outline: 3px solid rgba(79, 150, 96, 0.32);
-  outline-offset: 2px;
-}
-
-.rank-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rank-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) minmax(72px, auto);
-  align-items: center;
-  gap: 10px;
-  height: 46px;
-  padding: 0 12px;
-  border-bottom: 1px solid rgba(70, 123, 76, 0.12);
-}
-
-.rank-row:last-child {
-  border-bottom: 0;
-}
-
-.rank-row.current-player {
-  border-radius: 10px;
-  background: #e7f2ca;
-}
-
-.rank-number {
-  color: #809071;
-  font-weight: 800;
-  text-align: center;
-}
-
-.rank-name {
-  overflow: hidden;
-  color: #365f40;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rank-row strong {
-  color: #28553a;
-}
-
-.my-ranking {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(76px, auto);
-  align-items: center;
-  gap: 10px;
-  height: 50px;
-  margin-top: 12px;
-  padding: 0 13px;
-  border-radius: 14px;
-  background: #edf6cf;
-  color: #52705a;
-}
-
-.leaderboard-footer {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(70, 123, 76, 0.14);
-  color: #64775d;
-  font-size: 12px;
-}
-
-.loading-text,
-.leaderboard-error,
-.empty-ranking,
-.launch-status {
-  padding: 40px 14px;
-  color: #6c8063;
-  text-align: center;
 }
 
 @media (max-width: 680px) {
@@ -1026,11 +872,6 @@ h1 {
     border-radius: 20px;
   }
 
-  .leaderboard-panel {
-    height: calc(100dvh - 20px);
-    min-height: 0;
-  }
-
   .appearance-panel {
     width: 100%;
     max-height: calc(100dvh - 20px);
@@ -1056,23 +897,6 @@ h1 {
   .appearance-footer .primary-button {
     width: 100%;
     grid-column: 1 / -1;
-  }
-
-  .leaderboard-footer {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .rank-row {
-    grid-template-columns: 42px minmax(0, 1fr) minmax(64px, auto);
-    height: 44px;
-    padding: 0 8px;
-  }
-
-  .my-ranking {
-    grid-template-columns: minmax(0, 1fr) auto minmax(68px, auto);
-    height: 48px;
-    padding: 0 10px;
   }
 
   .audio-controls {
@@ -1140,13 +964,11 @@ h1 {
   }
 }
 
-/* Purple theme and the photo-backed mode selection page. */
 body {
   background: #eee5f7;
   color: #3e2452;
 }
 
-/* Keep the game view visually distinct from the mode-selection home page. */
 .game-page {
   isolation: isolate;
   overflow: hidden;
@@ -1224,8 +1046,7 @@ h1,
 
 .eyebrow,
 .mode-badge,
-.primary-button,
-.leaderboard-tabs button.active {
+.primary-button {
   background: #70408d;
   color: #fff;
 }
@@ -1238,17 +1059,13 @@ h1,
 .tagline,
 .mode-intro,
 .mode-note,
-.modal-panel p,
-.submit-status,
-.loading-text,
-.leaderboard-footer {
+.modal-panel p {
   color: #735c82;
 }
 
 .mode-option,
 .secondary-wide-button,
 .appearance-option,
-.leaderboard-tabs button,
 .modal-close {
   border-color: rgba(112, 64, 141, 0.2);
   background: #f4ecfc;
@@ -1285,8 +1102,7 @@ h1,
 }
 
 .social-link:focus-visible,
-.appearance-option:focus-visible,
-.rank-scroll:focus-visible {
+.appearance-option:focus-visible {
   outline-color: rgba(112, 64, 141, 0.42);
 }
 
@@ -1299,8 +1115,7 @@ h1,
   color: #fff;
 }
 
-.primary-button:hover,
-.leaderboard-tabs button.active:hover {
+.primary-button:hover {
   background: #5b2f77;
 }
 
@@ -1312,17 +1127,6 @@ h1,
   border-color: rgba(255, 255, 255, 0.78);
   background: #faf6ff;
   box-shadow: 0 22px 55px rgba(54, 22, 76, 0.3);
-}
-
-.nickname-panel input,
-.rank-scroll {
-  border-color: rgba(112, 64, 141, 0.24);
-  color: #3e2452;
-}
-
-.nickname-panel input:focus {
-  border-color: #8d5aa8;
-  box-shadow: 0 0 0 3px rgba(112, 64, 141, 0.16);
 }
 
 .appearance-level-card {
@@ -1349,11 +1153,6 @@ h1,
   box-shadow: 0 3px 9px rgba(54, 22, 76, 0.16);
 }
 
-.appearance-footer,
-.leaderboard-footer {
+.appearance-footer {
   border-top-color: rgba(112, 64, 141, 0.16);
-}
-
-.rank-row {
-  border-bottom-color: rgba(112, 64, 141, 0.12);
 }

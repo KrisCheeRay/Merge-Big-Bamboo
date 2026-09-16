@@ -33,7 +33,6 @@ export class MergeMilkFrogGame {
     this.root = root;
     this.callbacks = options.callbacks || {};
     this.mode = options.mode === 'endless' ? 'endless' : 'classic';
-    this.sessionId = options.sessionId || '';
     this.appearanceSelection = options.appearanceSelection;
     this.score = 0;
     this.bestScore = loadBestScore(this.mode);
@@ -78,7 +77,19 @@ export class MergeMilkFrogGame {
 
     this.root.innerHTML = `
       <main class="page-shell game-page">
-        <nav class="social-links" aria-label="站外链接">
+        <nav class="social-links" aria-label="页面导航">
+          <a
+            class="social-link home-link"
+            href="../"
+            aria-label="返回主页"
+            title="返回主页"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m3 10.5 9-7.5 9 7.5" />
+              <path d="M5 9v12h14V9" />
+              <path d="M9 21v-6h6v6" />
+            </svg>
+          </a>
           <a
             class="social-link github-link"
             href="https://github.com/Arch-Tempered-mortis/merge-big-milk-frog"
@@ -105,7 +116,7 @@ export class MergeMilkFrogGame {
           </a>
           <a
             class="social-link bilibili-link"
-            href="https://space.bilibili.com/9840636"
+            href="https://space.bilibili.com/596624087"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="在新标签页查看我的哔哩哔哩主页"
@@ -157,7 +168,6 @@ export class MergeMilkFrogGame {
             </div>
 
             <div class="game-actions">
-              <button class="soft-button" id="leaderboard-game" type="button">排行榜</button>
               <button class="soft-button" id="back-to-modes" type="button">模式选择</button>
               <button class="soft-button restart-button" id="restart-game" type="button">重新开始</button>
             </div>
@@ -176,9 +186,7 @@ export class MergeMilkFrogGame {
                   <strong id="final-score">0</strong>
                 </div>
                 <p class="result-best" id="result-best"></p>
-                <p class="submit-status" id="submit-status" aria-live="polite"></p>
                 <div class="result-actions">
-                  <button class="soft-button" id="result-leaderboard" type="button">查看排行榜</button>
                   <button class="primary-button" id="play-again" type="button">再玩一次</button>
                 </div>
               </div>
@@ -199,14 +207,12 @@ export class MergeMilkFrogGame {
     this.soundToggle = this.root.querySelector('#sound-toggle');
     this.volumeInput = this.root.querySelector('#master-volume');
     this.volumeValue = this.root.querySelector('#volume-value');
-    this.submitStatus = this.root.querySelector('#submit-status');
   }
 
   bindUi() {
     this.onPointerMove = (event) => {
       if (this.isFinished || !this.width) return;
 
-      // Let a vertical touch gesture belong to the page instead of moving the aim.
       if (event.pointerType === 'touch' && this.pointerState) {
         const dx = event.clientX - this.pointerState.startX;
         const dy = event.clientY - this.pointerState.startY;
@@ -272,12 +278,6 @@ export class MergeMilkFrogGame {
     this.root.querySelector('#restart-game').addEventListener('click', this.callbacks.onRestartRequest);
     this.root.querySelector('#play-again').addEventListener('click', this.callbacks.onPlayAgain);
     this.root.querySelector('#back-to-modes').addEventListener('click', this.callbacks.onBackToModes);
-    this.root.querySelector('#leaderboard-game').addEventListener('click', () => {
-      this.callbacks.onLeaderboardRequest?.(this.mode);
-    });
-    this.root.querySelector('#result-leaderboard').addEventListener('click', () => {
-      this.callbacks.onLeaderboardRequest?.(this.mode);
-    });
 
     this.soundToggle.addEventListener('click', () => {
       this.audioPreferences.enabled = !this.audioPreferences.enabled;
@@ -459,7 +459,6 @@ export class MergeMilkFrogGame {
       return;
     }
 
-    // Coalesce cascading merges into one audio cue for this physics update.
     let mergeSoundLevel = -1;
     while (this.mergeQueue.length) {
       const { a, b, level, isEndlessClear } = this.mergeQueue.shift();
@@ -682,8 +681,6 @@ export class MergeMilkFrogGame {
     if (!source || this.failedSounds.has(source)) return;
     if (!this.audioPreferences.enabled || this.audioPreferences.volume <= 0) return;
 
-    // Throttle ordinary merge cues across nearby physics updates. The win cue
-    // is intentionally exempt so reaching level 10 is always audible.
     const now = performance.now();
     if (!isWinSound && now - this.lastMergeSoundAt < this.mergeSoundCooldownMs) return;
     if (isWinSound) this.stopAllAudio();
@@ -755,23 +752,8 @@ export class MergeMilkFrogGame {
     this.root.querySelector('#result-best').textContent = isNewBest
       ? `新纪录！本模式历史最高分：${this.bestScore}`
       : `本模式历史最高分：${this.bestScore}`;
-    this.submitStatus.textContent = '正在提交排行榜成绩…';
     this.overlay.dataset.result = result;
     this.overlay.classList.remove('hidden');
-
-    this.callbacks.onFinish?.({
-      mode: this.mode,
-      score: this.score,
-      result,
-      sessionId: this.sessionId,
-      durationMs: Math.max(0, Date.now() - this.startedAt),
-    });
-  }
-
-  setSubmitStatus(message, state = '') {
-    if (!this.submitStatus) return;
-    this.submitStatus.textContent = message;
-    this.submitStatus.dataset.state = state;
   }
 
   destroy() {

@@ -9,13 +9,12 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Private leaderboard runtime data
 server/data.json
 server/*.log
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
 
-# Local deployment artifacts
 outputs/
 *.zip
+*.tar.gz
