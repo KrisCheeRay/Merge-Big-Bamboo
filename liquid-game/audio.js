@@ -87,6 +87,10 @@ class LiquidAudio {
     return this.enabled;
   }
 
+  suspend() {
+    if (this.context?.state === 'running') this.context.suspend().catch(() => {});
+  }
+
   tone(startFrequency, endFrequency, duration, type, volume, delay = 0, reverb = 0) {
     if (!this.context || !this.enabled) return;
     const time = this.context.currentTime + delay;

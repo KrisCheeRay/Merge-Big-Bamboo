@@ -20,6 +20,12 @@ const COLLISION_MARGIN = 1.25;
 const FIXED_STEP = 1 / 60;
 const MAX_FRAME_STEP = 1 / 20;
 
+const PERFORMANCE_PROFILES = [
+  { name: 'high', pixelRatio: 2, juiceLimit: 520, juiceScale: 1, juiceSteps: 2, sparkLimit: 240, sparkScale: 1 },
+  { name: 'balanced', pixelRatio: 1.5, juiceLimit: 340, juiceScale: 0.72, juiceSteps: 1, sparkLimit: 170, sparkScale: 0.72 },
+  { name: 'smooth', pixelRatio: 1.25, juiceLimit: 220, juiceScale: 0.46, juiceSteps: 1, sparkLimit: 110, sparkScale: 0.48 },
+];
+
 const MATERIALS = [
   { rho: 1.08, stiff: 0.16, ten: 0.30, plastic: 0.05, damp: 0.10, fr: 0.30 },
   { rho: 1.05, stiff: 0.13, ten: 0.30, plastic: 0.08, damp: 0.11, fr: 0.34 },
@@ -221,6 +227,18 @@ export class SoftBambooGame {
     this.dangerBeepTimer = 0;
     this.accumulator = 0;
     this.lastFrame = 0;
+    this.animationFrame = null;
+    this.performanceLevel = 1;
+    this.performanceProfile = PERFORMANCE_PROFILES[this.performanceLevel];
+    this.frameTimeAverage = 1 / 60;
+    this.performanceWarmup = 1.5;
+    this.performanceCooldown = 0;
+    this.slowFrameDuration = 0;
+    this.severeFrameDuration = 0;
+    this.fastFrameDuration = 0;
+    this.isPageHidden = document.hidden;
+    this.destroyed = false;
+    this.finishedAnimationRemaining = 0;
     this.abortController = new AbortController();
   }
 
@@ -236,7 +254,7 @@ export class SoftBambooGame {
     this.resizeCanvas();
     this.spawnHeld();
     this.lastFrame = performance.now();
-    this.animationFrame = requestAnimationFrame((time) => this.frame(time));
+    if (!this.isPageHidden) this.scheduleFrame();
   }
 
   renderShell() {
@@ -383,6 +401,7 @@ export class SoftBambooGame {
       liquidAudio.click();
       this.callbacks.onBackToModes?.();
     }, { signal });
+    document.addEventListener('visibilitychange', () => this.handleVisibilityChange(), { signal });
     this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
     this.resizeObserver.observe(this.host);
   }
@@ -395,11 +414,37 @@ export class SoftBambooGame {
   }
 
   resizeCanvas() {
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.round(WORLD_WIDTH * ratio);
-    this.canvas.height = Math.round(WORLD_HEIGHT * ratio);
+    const ratio = Math.min(window.devicePixelRatio || 1, this.performanceProfile.pixelRatio);
+    const width = Math.round(WORLD_WIDTH * ratio);
+    const height = Math.round(WORLD_HEIGHT * ratio);
+    this.canvas.dataset.performance = this.performanceProfile.name;
+    if (this.canvas.width === width && this.canvas.height === height && this.canvasRatio === ratio) return;
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.canvasRatio = ratio;
     this.context.setTransform(ratio, 0, 0, ratio, 0, 0);
     this.draw();
+  }
+
+  scheduleFrame() {
+    if (this.animationFrame || this.destroyed || this.isPageHidden) return;
+    this.animationFrame = requestAnimationFrame((time) => this.frame(time));
+  }
+
+  handleVisibilityChange() {
+    this.isPageHidden = document.hidden;
+    if (this.isPageHidden) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+      liquidAudio.suspend();
+      return;
+    }
+    this.lastFrame = performance.now();
+    this.accumulator = 0;
+    this.frameTimeAverage = 1 / 60;
+    this.performanceWarmup = Math.max(this.performanceWarmup, 0.75);
+    liquidAudio.init();
+    if (!this.isFinished || this.finishedAnimationRemaining > 0) this.scheduleFrame();
   }
 
   createBlob(x, y, level, options = {}) {
@@ -437,9 +482,12 @@ export class SoftBambooGame {
   }
 
   frame(time) {
-    if (!this.root.isConnected) return;
-    const elapsed = Math.min(MAX_FRAME_STEP, Math.max(0, (time - this.lastFrame) / 1000));
+    this.animationFrame = null;
+    if (this.destroyed || this.isPageHidden || !this.root.isConnected) return;
+    const rawElapsed = Math.max(0, (time - this.lastFrame) / 1000);
+    const elapsed = Math.min(MAX_FRAME_STEP, rawElapsed);
     this.lastFrame = time;
+    this.updateAdaptivePerformance(rawElapsed);
     if (!this.isFinished) {
       this.accumulator += elapsed;
       let steps = 0;
@@ -447,12 +495,55 @@ export class SoftBambooGame {
         this.simulate(FIXED_STEP);
         this.accumulator -= FIXED_STEP;
         steps += 1;
+        if (this.isFinished) break;
       }
     }
     this.updateEffects(elapsed);
     this.squeeze = Math.max(0, this.squeeze - elapsed * 3.5);
     this.draw();
-    this.animationFrame = requestAnimationFrame((nextTime) => this.frame(nextTime));
+    if (this.isFinished) {
+      this.finishedAnimationRemaining = Math.max(0, this.finishedAnimationRemaining - elapsed);
+      if (this.finishedAnimationRemaining === 0) return;
+    }
+    this.scheduleFrame();
+  }
+
+  updateAdaptivePerformance(elapsed) {
+    if (elapsed <= 0 || elapsed > 0.25 || this.isFinished) return;
+    this.performanceWarmup = Math.max(0, this.performanceWarmup - elapsed);
+    this.performanceCooldown = Math.max(0, this.performanceCooldown - elapsed);
+    this.frameTimeAverage += (elapsed - this.frameTimeAverage) * 0.05;
+    if (this.performanceWarmup > 0 || this.performanceCooldown > 0) return;
+
+    this.slowFrameDuration = this.frameTimeAverage > 1 / 45 ? this.slowFrameDuration + elapsed : Math.max(0, this.slowFrameDuration - elapsed * 2);
+    this.severeFrameDuration = this.frameTimeAverage > 1 / 30 ? this.severeFrameDuration + elapsed : 0;
+    this.fastFrameDuration = this.frameTimeAverage < 1 / 56 ? this.fastFrameDuration + elapsed : 0;
+
+    if (this.severeFrameDuration >= 0.75) {
+      this.setPerformanceLevel(PERFORMANCE_PROFILES.length - 1);
+    } else if (this.slowFrameDuration >= 2 && this.performanceLevel < PERFORMANCE_PROFILES.length - 1) {
+      this.setPerformanceLevel(this.performanceLevel + 1);
+    } else if (this.fastFrameDuration >= 8 && this.performanceLevel > 0) {
+      this.setPerformanceLevel(this.performanceLevel - 1);
+    }
+  }
+
+  setPerformanceLevel(level) {
+    const nextLevel = clamp(level, 0, PERFORMANCE_PROFILES.length - 1);
+    if (nextLevel === this.performanceLevel) return;
+    this.performanceLevel = nextLevel;
+    this.performanceProfile = PERFORMANCE_PROFILES[nextLevel];
+    this.performanceCooldown = 5;
+    this.slowFrameDuration = 0;
+    this.severeFrameDuration = 0;
+    this.fastFrameDuration = 0;
+    if (this.juiceParticles.length > this.performanceProfile.juiceLimit) {
+      this.juiceParticles = this.juiceParticles.slice(-this.performanceProfile.juiceLimit);
+    }
+    if (this.sparkParticles.length > this.performanceProfile.sparkLimit) {
+      this.sparkParticles = this.sparkParticles.slice(-this.performanceProfile.sparkLimit);
+    }
+    this.resizeCanvas();
   }
 
   simulate(dt) {
@@ -665,10 +756,13 @@ export class SoftBambooGame {
 
   spawnJuiceBurst(x, y, level, count, speed) {
     const color = hexRgb(LEVELS[level].color);
-    for (let index = 0; index < count; index += 1) {
+    const visualCount = Math.min(
+      Math.ceil(count * this.performanceProfile.juiceScale),
+      Math.max(0, this.performanceProfile.juiceLimit - this.juiceParticles.length),
+    );
+    for (let index = 0; index < visualCount; index += 1) {
       const angle = -Math.PI / 2 + randomRange(-1.3, 1.3);
       const velocity = speed * randomRange(0.35, 1);
-      if (this.juiceParticles.length >= 520) this.juiceParticles.shift();
       this.juiceParticles.push({
         x: x + randomRange(-9, 9),
         y: y + randomRange(-9, 9),
@@ -689,7 +783,11 @@ export class SoftBambooGame {
     const source = hexRgb(LEVELS[level].color);
     const target = hexRgb(LEVELS[Math.min(level + 1, LEVEL_COUNT - 1)].color);
     const color = mixRgb(source, target, 0.5);
-    for (let index = 0; index < count; index += 1) {
+    const visualCount = Math.min(
+      Math.ceil(count * this.performanceProfile.sparkScale),
+      Math.max(0, this.performanceProfile.sparkLimit - this.sparkParticles.length),
+    );
+    for (let index = 0; index < visualCount; index += 1) {
       const angle = Math.random() * Math.PI * 2;
       const velocity = speed * randomRange(0.3, 1);
       this.sparkParticles.push({
@@ -739,7 +837,7 @@ export class SoftBambooGame {
   stepJuice(dt) {
     const particles = this.juiceParticles;
     if (!particles.length) return;
-    const substeps = 2;
+    const substeps = this.performanceProfile.juiceSteps;
     const step = dt / substeps;
     const interactionRadius = 11;
     const interactionRadiusSquared = interactionRadius * interactionRadius;
@@ -909,6 +1007,7 @@ export class SoftBambooGame {
   finish(won) {
     if (this.isFinished) return;
     this.isFinished = true;
+    this.finishedAnimationRemaining = 1.25;
     if (won) liquidAudio.win();
     else liquidAudio.over();
     if (this.held) {
@@ -1175,7 +1274,9 @@ export class SoftBambooGame {
   }
 
   destroy() {
+    this.destroyed = true;
     cancelAnimationFrame(this.animationFrame);
+    this.animationFrame = null;
     this.resizeObserver?.disconnect();
     this.abortController.abort();
     this.blobs.length = 0;

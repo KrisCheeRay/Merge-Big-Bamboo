@@ -55,7 +55,7 @@ if (softBuild.status !== 0) {
   process.exit(softBuild.status ?? 1);
 }
 
-for (const file of ['index.html', 'style.css', 'app.js', 'fanpage_background.webp']) {
+for (const file of ['index.html', 'style.css', 'app.js', 'fanpage_background.webp', 'Cat.png', 'white.png', 'pink.png']) {
   cpSync(resolve(fanpageDir, file), resolve(stagingDir, file));
 }
 
