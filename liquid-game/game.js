@@ -619,7 +619,7 @@ function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function createFruitTexture(level) {
+export function createFruitTexture(level, options = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 256;
@@ -648,7 +648,7 @@ export function createFruitTexture(level) {
   shade.addColorStop(1, rgba(hexRgb(level.outline), 0.52));
   context.fillStyle = shade;
   context.fillRect(-1.25, -1.25, 2.5, 2.5);
-  drawFruitFace(context);
+  if (options.includeFace !== false) drawFruitFace(context);
   return canvas;
 }
 

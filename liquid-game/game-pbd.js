@@ -83,6 +83,12 @@ class Blob {
     this.born = options.time ?? 0;
     this.dropT = -99;
     this.dangerT = 0;
+    this.squash = 0;
+    this.mood = 0;
+    this.blink = randomRange(1, 4);
+    this.lookX = 0;
+    this.lookY = 0;
+    this.hitT = 0;
     this.growFrom = options.scale ?? 1;
     this.growT = this.growFrom < 1 ? 0 : 1;
     this.growDur = options.growDur ?? 0.3;
@@ -166,6 +172,13 @@ class Blob {
       a10 * inverse00 + a11 * inverse01,
       a10 * inverse01 + a11 * inverse11,
     ];
+    const [m00, m01, m10, m11] = this.A;
+    const trace = m00 * m00 + m01 * m01 + m10 * m10 + m11 * m11;
+    const absoluteDeterminant = Math.abs(m00 * m11 - m01 * m10);
+    const discriminant = Math.sqrt(Math.max(0, trace * trace - 4 * absoluteDeterminant * absoluteDeterminant));
+    const largestStretch = Math.sqrt(Math.max(1e-6, (trace + discriminant) * 0.5));
+    const smallestStretch = Math.sqrt(Math.max(1e-6, (trace - discriminant) * 0.5));
+    this.squash = 1 - smallestStretch / largestStretch;
   }
 }
 
@@ -182,6 +195,7 @@ export class SoftBambooGame {
     this.blobs = [];
     this.contacts = [];
     this.images = new Map();
+    this.previewImages = new Map();
     this.nextId = 1;
     this.worldTime = 0;
     this.aimX = WORLD_WIDTH / 2;
@@ -331,7 +345,10 @@ export class SoftBambooGame {
   }
 
   preloadImages() {
-    for (const level of LEVELS) this.images.set(level.index, createFruitTexture(level));
+    for (const level of LEVELS) {
+      this.images.set(level.index, createFruitTexture(level, { includeFace: false }));
+      this.previewImages.set(level.index, createFruitTexture(level));
+    }
   }
 
   resizeCanvas() {
@@ -457,8 +474,28 @@ export class SoftBambooGame {
       plasticFlow(blob, dt);
     }
     this.contacts = pairs.filter((pair) => pair.hits > 0);
+    const impactStep = dt / SUBSTEPS;
+    for (const contact of this.contacts) {
+      if (contact.impact / impactStep > 620) {
+        contact.a.hitT = 0.3;
+        contact.b.hitT = 0.3;
+      }
+    }
     this.handleMerges();
     this.checkDanger(dt);
+    this.updateExpressions(dt);
+  }
+
+  updateExpressions(dt) {
+    const lookTargetX = this.held ? this.aimX : WORLD_WIDTH * 0.5;
+    for (const blob of this.blobs) {
+      blob.blink -= dt;
+      if (blob.blink < -0.12) blob.blink = randomRange(2, 5.5);
+      blob.mood = Math.max(0, blob.mood - dt);
+      blob.hitT = Math.max(0, blob.hitT - dt);
+      blob.lookX = lerp(blob.lookX, (lookTargetX - blob.cx) / 120, dt * 4);
+      blob.lookY = lerp(blob.lookY, (PIPETTE_TIP_Y - blob.cy) / 300, dt * 4);
+    }
   }
 
   applyCohesion(dt) {
@@ -510,6 +547,7 @@ export class SoftBambooGame {
     const x = (a.cx + b.cx) * 0.5;
     const y = (a.cy + b.cy) * 0.5;
     const merged = this.createBlob(x, y, level, { scale: 0.58, growDur: 0.3, flash: 1 });
+    merged.mood = 1.4;
     const velocityX = (a.vcx + b.vcx) * 0.5 + (Math.random() - 0.5) * 22;
     const velocityY = Math.min(-58, (a.vcy + b.vcy) * 0.32 - 42);
     for (let index = 0; index < merged.N; index += 1) {
@@ -562,7 +600,7 @@ export class SoftBambooGame {
     context.beginPath();
     context.arc(48, 48, 45, 0, Math.PI * 2);
     context.clip();
-    context.drawImage(this.images.get(levelIndex), 0, 0, 96, 96);
+    context.drawImage(this.previewImages.get(levelIndex), 0, 0, 96, 96);
     container.append(canvas);
   }
 
@@ -637,6 +675,10 @@ export class SoftBambooGame {
     context.lineWidth = Math.max(1.6, radius * 0.027);
     context.strokeStyle = hexToRgba(blob.info.outline, 0.78);
     context.stroke();
+    context.save();
+    context.transform(matrix[0], matrix[1], matrix[2], matrix[3], blob.cx, blob.cy);
+    drawBlobFace(context, blob, radius);
+    context.restore();
     context.restore();
   }
 
@@ -751,6 +793,103 @@ function integrate(blob, dt) {
   }
 }
 
+function drawBlobFace(context, blob, radius) {
+  const scale = Math.min(radius * 0.34, 9 + radius * 0.16) / 10;
+  const eyeY = radius * 0.08;
+  const eyeX = 5.2 * scale + radius * 0.1;
+  const ink = '#2a0f1c';
+  const worried = blob.dangerT > 0.3;
+  const squished = blob.squash > 0.3 || blob.hitT > 0;
+  const happy = blob.mood > 0;
+
+  context.save();
+  context.translate(0, eyeY);
+  context.fillStyle = ink;
+  context.strokeStyle = ink;
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.lineWidth = 1.7 * scale;
+
+  context.fillStyle = 'rgba(255,90,120,0.35)';
+  context.beginPath();
+  context.ellipse(-eyeX - 3.2 * scale, 4.2 * scale, 3 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
+  context.ellipse(eyeX + 3.2 * scale, 4.2 * scale, 3 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = ink;
+
+  if (happy) {
+    for (const x of [-eyeX, eyeX]) {
+      context.beginPath();
+      context.moveTo(x - 2.6 * scale, 0.8 * scale);
+      context.quadraticCurveTo(x, -3 * scale, x + 2.6 * scale, 0.8 * scale);
+      context.stroke();
+    }
+    context.beginPath();
+    context.moveTo(-3 * scale, 4 * scale);
+    context.quadraticCurveTo(0, 9 * scale, 3 * scale, 4 * scale);
+    context.closePath();
+    context.fill();
+  } else if (squished) {
+    for (const x of [-eyeX, eyeX]) {
+      const direction = x < 0 ? 1 : -1;
+      context.beginPath();
+      context.moveTo(x - 2.4 * scale * direction, -2.2 * scale);
+      context.lineTo(x + 1.8 * scale * direction, 0);
+      context.lineTo(x - 2.4 * scale * direction, 2.2 * scale);
+      context.stroke();
+    }
+    context.beginPath();
+    context.moveTo(-3 * scale, 5.5 * scale);
+    for (let point = 0; point <= 4; point += 1) {
+      context.lineTo(-3 * scale + point * 1.5 * scale, (point % 2 ? 4.3 : 5.8) * scale);
+    }
+    context.stroke();
+  } else {
+    const blinking = blob.blink < 0;
+    const lookX = clamp(blob.lookX, -1, 1) * 1.1 * scale;
+    const lookY = clamp(blob.lookY, -1, 1) * 0.9 * scale;
+    for (const x of [-eyeX, eyeX]) {
+      if (blinking) {
+        context.beginPath();
+        context.moveTo(x - 2.3 * scale, 0.5 * scale);
+        context.quadraticCurveTo(x, 2 * scale, x + 2.3 * scale, 0.5 * scale);
+        context.stroke();
+        continue;
+      }
+      const eyeHeight = worried ? 3.4 : 2.9;
+      context.beginPath();
+      context.ellipse(x + lookX * 0.4, lookY * 0.4, 2.2 * scale, eyeHeight * scale, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#fff';
+      context.beginPath();
+      context.arc(x + lookX - 0.6 * scale, lookY - 1.1 * scale, 0.85 * scale, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = ink;
+    }
+    if (worried) {
+      context.beginPath();
+      context.ellipse(0, 5.4 * scale, 1.5 * scale, 1.9 * scale, 0, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = 'rgba(150,220,255,0.9)';
+      context.beginPath();
+      context.moveTo(eyeX + 5 * scale, -5 * scale);
+      context.quadraticCurveTo(eyeX + 7.5 * scale, -scale, eyeX + 5 * scale, -0.2 * scale);
+      context.quadraticCurveTo(eyeX + 2.8 * scale, -scale, eyeX + 5 * scale, -5 * scale);
+      context.fill();
+    } else if (Math.abs(blob.vcy) > 500) {
+      context.beginPath();
+      context.ellipse(0, 5 * scale, 1.4 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
+      context.fill();
+    } else {
+      context.beginPath();
+      context.moveTo(-2.2 * scale, 4.2 * scale);
+      context.quadraticCurveTo(0, 6.4 * scale, 2.2 * scale, 4.2 * scale);
+      context.stroke();
+    }
+  }
+  context.restore();
+}
+
 function solveInternal(blob) {
   const tension = blob.material.ten * 0.5;
   for (let index = 0; index < blob.N; index += 1) {
@@ -837,8 +976,10 @@ function solveWalls(blob) {
   const friction = blob.material.fr + 0.15;
   for (let index = 0; index < blob.N; index += 1) {
     if (blob.y[index] > floor) {
+      const penetration = blob.y[index] - floor;
       blob.y[index] = floor;
       blob.x[index] -= (blob.x[index] - blob.px[index]) * Math.min(1, friction * 1.6);
+      if (penetration > 3 && Math.hypot(blob.vcx, blob.vcy) > 520) blob.hitT = 0.35;
     }
     if (blob.x[index] < left) {
       blob.x[index] = left;
@@ -1056,6 +1197,10 @@ function lerp(start, end, amount) {
 
 function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+function randomRange(minimum, maximum) {
+  return minimum + Math.random() * (maximum - minimum);
 }
 
 function hexRgb(color) {
