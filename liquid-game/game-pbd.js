@@ -8,6 +8,7 @@ import {
   saveBestScore,
 } from './config.js';
 import { createFruitTexture } from './game.js';
+import { liquidAudio } from './audio.js';
 
 const WORLD_WIDTH = 520;
 const WORLD_HEIGHT = 780;
@@ -89,6 +90,7 @@ class Blob {
     this.lookX = 0;
     this.lookY = 0;
     this.hitT = 0;
+    this.lastImpactSound = -Infinity;
     this.growFrom = options.scale ?? 1;
     this.growT = options.growT ?? (this.growFrom < 1 ? 0 : 1);
     this.growDur = options.growDur ?? 0.3;
@@ -216,12 +218,14 @@ export class SoftBambooGame {
     this.squeeze = 0;
     this.isFinished = false;
     this.dangerDuration = 0;
+    this.dangerBeepTimer = 0;
     this.accumulator = 0;
     this.lastFrame = 0;
     this.abortController = new AbortController();
   }
 
   start() {
+    liquidAudio.init();
     this.renderShell();
     this.cacheElements();
     this.bindUi();
@@ -269,6 +273,7 @@ export class SoftBambooGame {
               <div class="preview-item"><span>下一个</span><div class="mini-ball" id="next-preview"></div></div>
             </div>
             <div class="game-actions">
+              <button class="soft-button sound-toggle" id="sound-toggle" type="button" aria-pressed="${liquidAudio.enabled}"></button>
               <button class="soft-button" id="back-to-modes" type="button">模式选择</button>
               <button class="soft-button restart-button" id="restart-game" type="button">重新开始</button>
             </div>
@@ -311,6 +316,8 @@ export class SoftBambooGame {
     this.currentPreview = this.root.querySelector('#current-preview');
     this.nextPreview = this.root.querySelector('#next-preview');
     this.overlay = this.root.querySelector('#game-overlay');
+    this.soundToggle = this.root.querySelector('#sound-toggle');
+    this.updateSoundToggle();
   }
 
   bindUi() {
@@ -358,9 +365,24 @@ export class SoftBambooGame {
     }, { signal });
 
     this.canvas.addEventListener('pointercancel', () => { this.pointer = null; }, { signal });
-    this.root.querySelector('#restart-game').addEventListener('click', this.callbacks.onRestartRequest, { signal });
-    this.root.querySelector('#play-again').addEventListener('click', this.callbacks.onPlayAgain, { signal });
-    this.root.querySelector('#back-to-modes').addEventListener('click', this.callbacks.onBackToModes, { signal });
+    this.soundToggle.addEventListener('click', () => {
+      liquidAudio.init();
+      const enabled = liquidAudio.toggle();
+      this.updateSoundToggle();
+      if (enabled) liquidAudio.click();
+    }, { signal });
+    this.root.querySelector('#restart-game').addEventListener('click', () => {
+      liquidAudio.click();
+      this.callbacks.onRestartRequest?.();
+    }, { signal });
+    this.root.querySelector('#play-again').addEventListener('click', () => {
+      liquidAudio.click();
+      this.callbacks.onPlayAgain?.();
+    }, { signal });
+    this.root.querySelector('#back-to-modes').addEventListener('click', () => {
+      liquidAudio.click();
+      this.callbacks.onBackToModes?.();
+    }, { signal });
     this.resizeObserver = new ResizeObserver(() => this.resizeCanvas());
     this.resizeObserver.observe(this.host);
   }
@@ -411,6 +433,7 @@ export class SoftBambooGame {
     this.updatePreview();
     this.cooldown = 0.44;
     this.squeeze = 1;
+    liquidAudio.drop(blob.level);
   }
 
   frame(time) {
@@ -497,10 +520,25 @@ export class SoftBambooGame {
     }
     this.contacts = pairs.filter((pair) => pair.hits > 0);
     const impactStep = dt / SUBSTEPS;
+    let strongestImpact = 0;
+    let impactLevel = 0;
     for (const contact of this.contacts) {
-      if (contact.impact / impactStep > 620) {
+      const impact = contact.impact / impactStep;
+      if (impact > strongestImpact) {
+        strongestImpact = impact;
+        impactLevel = Math.min(contact.a.level, contact.b.level);
+      }
+      if (impact > 620) {
         contact.a.hitT = 0.3;
         contact.b.hitT = 0.3;
+      }
+    }
+    if (strongestImpact > 320) liquidAudio.squish(strongestImpact, impactLevel);
+    for (const blob of this.blobs) {
+      const floorImpact = Math.abs(blob.vcy);
+      if (blob.maxY >= WORLD_HEIGHT - 1.5 && floorImpact > 260 && this.worldTime - blob.lastImpactSound > 0.18) {
+        blob.lastImpactSound = this.worldTime;
+        liquidAudio.squish(floorImpact, blob.level);
       }
     }
     this.handleMerges();
@@ -581,6 +619,7 @@ export class SoftBambooGame {
       this.spawnText(x, y - a.rest * 0.5, `+${ENDLESS_CLEAR_SCORE}`, true);
       if (this.combo > 1) this.spawnText(x, y - a.rest - 18, `连击 ×${this.combo}`, false, [255, 181, 71]);
       this.cameraShake = Math.max(this.cameraShake, 22);
+      liquidAudio.burst();
       this.score += ENDLESS_CLEAR_SCORE;
       this.updateScore();
       this.updateStats();
@@ -617,6 +656,7 @@ export class SoftBambooGame {
     this.spawnText(x, y - merged.rest * 0.6, `+${points}`, this.combo > 1);
     if (this.combo > 1) this.spawnText(x, y - merged.rest - 18, `连击 ×${this.combo}`, false, [255, 181, 71]);
     this.cameraShake = Math.max(this.cameraShake, 2 + level * 1.2);
+    liquidAudio.merge(level, this.combo - 1);
     this.score += points;
     this.updateScore();
     this.updateStats();
@@ -803,7 +843,19 @@ export class SoftBambooGame {
       maximum = Math.max(maximum, blob.dangerT);
     }
     this.dangerDuration = maximum;
+    this.dangerBeepTimer -= dt;
+    if (maximum > 0.5 && this.dangerBeepTimer <= 0) {
+      liquidAudio.danger();
+      this.dangerBeepTimer = Math.max(0.18, 0.6 - maximum * 0.12);
+    }
     if (maximum > 3) this.finish(false);
+  }
+
+  updateSoundToggle() {
+    if (!this.soundToggle) return;
+    this.soundToggle.textContent = liquidAudio.enabled ? '音效开' : '音效关';
+    this.soundToggle.setAttribute('aria-pressed', String(liquidAudio.enabled));
+    this.soundToggle.setAttribute('aria-label', liquidAudio.enabled ? '关闭游戏音效' : '开启游戏音效');
   }
 
   updateScore() {
@@ -857,6 +909,8 @@ export class SoftBambooGame {
   finish(won) {
     if (this.isFinished) return;
     this.isFinished = true;
+    if (won) liquidAudio.win();
+    else liquidAudio.over();
     if (this.held) {
       this.held.held = false;
       this.held.pin = null;
