@@ -90,7 +90,7 @@ class Blob {
     this.lookY = 0;
     this.hitT = 0;
     this.growFrom = options.scale ?? 1;
-    this.growT = this.growFrom < 1 ? 0 : 1;
+    this.growT = options.growT ?? (this.growFrom < 1 ? 0 : 1);
     this.growDur = options.growDur ?? 0.3;
     this.flash = options.flash ?? 0;
     this.updateBounds();
@@ -188,14 +188,26 @@ export class SoftBambooGame {
     this.mode = options.mode === 'endless' ? 'endless' : 'classic';
     this.callbacks = options.callbacks || {};
     this.score = 0;
+    this.mergeCount = 0;
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.maxCombo = 0;
+    this.juiceTotal = 0;
     this.bestScore = loadBestScore(this.mode);
     this.initialBestScore = this.bestScore;
+    this.highestLevel = 0;
     this.currentLevel = randomSpawnLevel();
-    this.nextLevel = randomSpawnLevel();
+    this.nextLevel = randomSpawnLevel(this.highestLevel);
     this.blobs = [];
     this.contacts = [];
+    this.bridges = [];
     this.images = new Map();
     this.previewImages = new Map();
+    this.juiceParticles = [];
+    this.sparkParticles = [];
+    this.effectRings = [];
+    this.floatingTexts = [];
+    this.cameraShake = 0;
     this.nextId = 1;
     this.worldTime = 0;
     this.aimX = WORLD_WIDTH / 2;
@@ -215,6 +227,7 @@ export class SoftBambooGame {
     this.bindUi();
     this.preloadImages();
     this.updateScore();
+    this.updateStats();
     this.updatePreview();
     this.resizeCanvas();
     this.spawnHeld();
@@ -260,6 +273,11 @@ export class SoftBambooGame {
               <button class="soft-button restart-button" id="restart-game" type="button">重新开始</button>
             </div>
           </div>
+          <div class="soft-stats" aria-label="本局统计">
+            <div><span>融合</span><strong id="merge-count">0</strong></div>
+            <div><span>最大连击</span><strong id="max-combo">0</strong></div>
+            <div><span>果汁 mL</span><strong id="juice-total">0</strong></div>
+          </div>
           <div class="game-stage soft-stage" id="canvas-host">
             <canvas id="game-canvas" aria-label="流心西瓜游戏区域"></canvas>
             <div class="danger-label">警戒线</div>
@@ -287,6 +305,9 @@ export class SoftBambooGame {
     this.context = this.canvas.getContext('2d');
     this.scoreElement = this.root.querySelector('#score-value');
     this.bestScoreElement = this.root.querySelector('#best-score-value');
+    this.mergeCountElement = this.root.querySelector('#merge-count');
+    this.maxComboElement = this.root.querySelector('#max-combo');
+    this.juiceTotalElement = this.root.querySelector('#juice-total');
     this.currentPreview = this.root.querySelector('#current-preview');
     this.nextPreview = this.root.querySelector('#next-preview');
     this.overlay = this.root.querySelector('#game-overlay');
@@ -346,7 +367,7 @@ export class SoftBambooGame {
 
   preloadImages() {
     for (const level of LEVELS) {
-      this.images.set(level.index, createFruitTexture(level, { includeFace: false }));
+      this.images.set(level.index, createFruitTexture(level, { includeFace: false, includeShade: false }));
       this.previewImages.set(level.index, createFruitTexture(level));
     }
   }
@@ -386,7 +407,7 @@ export class SoftBambooGame {
     for (let index = 0; index < blob.N; index += 1) blob.vy[index] += 80;
     this.held = null;
     this.currentLevel = this.nextLevel;
-    this.nextLevel = randomSpawnLevel();
+    this.nextLevel = randomSpawnLevel(this.highestLevel);
     this.updatePreview();
     this.cooldown = 0.44;
     this.squeeze = 1;
@@ -405,6 +426,7 @@ export class SoftBambooGame {
         steps += 1;
       }
     }
+    this.updateEffects(elapsed);
     this.squeeze = Math.max(0, this.squeeze - elapsed * 3.5);
     this.draw();
     this.animationFrame = requestAnimationFrame((nextTime) => this.frame(nextTime));
@@ -482,6 +504,7 @@ export class SoftBambooGame {
       }
     }
     this.handleMerges();
+    this.bridges = this.bridges.filter(({ a, b }) => this.blobs.includes(a) && this.blobs.includes(b));
     this.checkDanger(dt);
     this.updateExpressions(dt);
   }
@@ -499,6 +522,7 @@ export class SoftBambooGame {
   }
 
   applyCohesion(dt) {
+    this.bridges = [];
     for (let first = 0; first < this.blobs.length; first += 1) {
       const a = this.blobs[first];
       if (a.held) continue;
@@ -511,11 +535,13 @@ export class SoftBambooGame {
         const radiusA = Math.sqrt(Math.abs(a.area) / Math.PI);
         const radiusB = Math.sqrt(Math.abs(b.area) / Math.PI);
         const gap = distance - radiusA - radiusB;
-        const range = a.rest * 0.42;
-        if (gap < 0 || gap > range) continue;
-        const strength = 700 * Math.pow(1 - gap / range, 2) * dt;
+        const range = a.rest * 0.55;
+        if (gap > range || isBridgeBlocked(a, b, this.blobs)) continue;
+        const close = clamp(1 - gap / range, 0, 1);
+        const strength = 900 * close * close * dt;
         pullParticles(a, dx / distance, dy / distance, strength);
         pullParticles(b, -dx / distance, -dy / distance, strength);
+        this.bridges.push({ a, b, close });
       }
     }
   }
@@ -538,27 +564,233 @@ export class SoftBambooGame {
   merge(a, b) {
     if (!this.blobs.includes(a) || !this.blobs.includes(b)) return;
     this.blobs = this.blobs.filter((blob) => blob !== a && blob !== b);
+    this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
+    this.comboTimer = 1.5;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
+    this.mergeCount += 1;
+    const massA = a.material.rho * Math.abs(a.area);
+    const massB = b.material.rho * Math.abs(b.area);
+    const totalMass = massA + massB || 1;
+    const x = (a.cx * massA + b.cx * massB) / totalMass;
+    const y = (a.cy * massA + b.cy * massB) / totalMass;
     if (a.level === LEVEL_COUNT - 1) {
+      this.spawnJuiceBurst(x, y, a.level, 140, 900);
+      this.spawnSparks(x, y, a.level, 60, 700);
+      this.spawnRing(x, y, a.rest * 1.5, a.level);
+      this.spawnRing(x, y, a.rest, a.level, [255, 240, 200]);
+      this.spawnText(x, y - a.rest * 0.5, `+${ENDLESS_CLEAR_SCORE}`, true);
+      if (this.combo > 1) this.spawnText(x, y - a.rest - 18, `连击 ×${this.combo}`, false, [255, 181, 71]);
+      this.cameraShake = Math.max(this.cameraShake, 22);
       this.score += ENDLESS_CLEAR_SCORE;
       this.updateScore();
+      this.updateStats();
       return;
     }
     const level = a.level + 1;
-    const x = (a.cx + b.cx) * 0.5;
-    const y = (a.cy + b.cy) * 0.5;
-    const merged = this.createBlob(x, y, level, { scale: 0.58, growDur: 0.3, flash: 1 });
+    this.highestLevel = Math.max(this.highestLevel, level);
+    const currentRadius = Math.sqrt((Math.abs(a.area) + Math.abs(b.area)) / Math.PI);
+    const merged = this.createBlob(x, y, level, { scale: currentRadius / LEVELS[level].radius, growT: 0, growDur: 0.38, flash: 1 });
     merged.mood = 1.4;
-    const velocityX = (a.vcx + b.vcx) * 0.5 + (Math.random() - 0.5) * 22;
-    const velocityY = Math.min(-58, (a.vcy + b.vcy) * 0.32 - 42);
+    const velocityX = (a.vcx * massA + b.vcx * massB) / totalMass;
+    const velocityY = (a.vcy * massA + b.vcy * massB) / totalMass;
     for (let index = 0; index < merged.N; index += 1) {
-      merged.vx[index] = velocityX;
-      merged.vy[index] = velocityY;
+      const angle = index / merged.N * Math.PI * 2 - Math.PI / 2;
+      const directionX = Math.cos(angle);
+      const directionY = Math.sin(angle);
+      let distance = Math.max(rayPolygon(a, x, y, directionX, directionY), rayPolygon(b, x, y, directionX, directionY));
+      if (distance < 0) distance = currentRadius * 0.6;
+      distance = Math.max(distance, currentRadius * 0.45);
+      merged.x[index] = x + directionX * distance;
+      merged.y[index] = y + directionY * distance;
+      merged.vx[index] = velocityX + directionX * 40;
+      merged.vy[index] = velocityY + directionY * 40;
     }
+    merged.updateBounds();
+    merged.fit();
     merged.dropT = this.worldTime;
     this.blobs.push(merged);
-    this.score += mergeScore(level);
+    const multiplier = 1 + (this.combo - 1) * 0.5;
+    const points = Math.round(mergeScore(level) * multiplier);
+    this.spawnJuiceBurst(x, y, a.level, 10 + a.level * 3, 260 + a.level * 35);
+    this.spawnSparks(x, y, level, 10 + a.level * 2, 300 + a.level * 25);
+    this.spawnRing(x, y, merged.rest * 0.9, level);
+    this.spawnText(x, y - merged.rest * 0.6, `+${points}`, this.combo > 1);
+    if (this.combo > 1) this.spawnText(x, y - merged.rest - 18, `连击 ×${this.combo}`, false, [255, 181, 71]);
+    this.cameraShake = Math.max(this.cameraShake, 2 + level * 1.2);
+    this.score += points;
     this.updateScore();
+    this.updateStats();
     if (level === LEVEL_COUNT - 1 && this.mode === 'classic') this.finish(true);
+  }
+
+  spawnJuiceBurst(x, y, level, count, speed) {
+    const color = hexRgb(LEVELS[level].color);
+    for (let index = 0; index < count; index += 1) {
+      const angle = -Math.PI / 2 + randomRange(-1.3, 1.3);
+      const velocity = speed * randomRange(0.35, 1);
+      if (this.juiceParticles.length >= 520) this.juiceParticles.shift();
+      this.juiceParticles.push({
+        x: x + randomRange(-9, 9),
+        y: y + randomRange(-9, 9),
+        px: x,
+        py: y,
+        vx: Math.cos(angle) * velocity,
+        vy: Math.sin(angle) * velocity,
+        color,
+        size: randomRange(2.2, 4.6),
+        age: 0,
+        life: randomRange(5, 9),
+      });
+    }
+    this.juiceTotal += count * 0.8;
+  }
+
+  spawnSparks(x, y, level, count, speed) {
+    const source = hexRgb(LEVELS[level].color);
+    const target = hexRgb(LEVELS[Math.min(level + 1, LEVEL_COUNT - 1)].color);
+    const color = mixRgb(source, target, 0.5);
+    for (let index = 0; index < count; index += 1) {
+      const angle = Math.random() * Math.PI * 2;
+      const velocity = speed * randomRange(0.3, 1);
+      this.sparkParticles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * velocity,
+        vy: Math.sin(angle) * velocity - speed * 0.3,
+        color,
+        size: randomRange(1.5, 4),
+        star: Math.random() < 0.35,
+        age: 0,
+        life: randomRange(0.4, 0.9),
+      });
+    }
+  }
+
+  spawnRing(x, y, radius, level, color = null) {
+    this.effectRings.push({ x, y, radius, color: color || hexRgb(LEVELS[level].color), age: 0, life: 0.55 });
+  }
+
+  spawnText(x, y, text, big = false, color = null) {
+    this.floatingTexts.push({ x, y, text, big, color, age: 0, life: 1.1 });
+  }
+
+  updateEffects(dt) {
+    this.comboTimer = Math.max(0, this.comboTimer - dt);
+    if (this.comboTimer === 0) this.combo = 0;
+    this.cameraShake *= Math.pow(0.02, dt);
+    this.stepJuice(dt);
+    for (const particle of this.sparkParticles) {
+      particle.age += dt;
+      particle.vy += 900 * dt;
+      particle.vx *= Math.pow(0.985, dt * 60);
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+    }
+    this.sparkParticles = this.sparkParticles.filter((particle) => particle.age < particle.life);
+    for (const ring of this.effectRings) ring.age += dt;
+    this.effectRings = this.effectRings.filter((ring) => ring.age < ring.life);
+    for (const text of this.floatingTexts) {
+      text.age += dt;
+      text.y -= 38 * dt * (1 - text.age / text.life);
+    }
+    this.floatingTexts = this.floatingTexts.filter((text) => text.age < text.life);
+  }
+
+  stepJuice(dt) {
+    const particles = this.juiceParticles;
+    if (!particles.length) return;
+    const substeps = 2;
+    const step = dt / substeps;
+    const interactionRadius = 11;
+    const interactionRadiusSquared = interactionRadius * interactionRadius;
+    for (let substep = 0; substep < substeps; substep += 1) {
+      for (const particle of particles) {
+        particle.vy += GRAVITY * 0.8 * step;
+        particle.px = particle.x;
+        particle.py = particle.y;
+        particle.x += particle.vx * step;
+        particle.y += particle.vy * step;
+        particle.ax = 0;
+        particle.ay = 0;
+      }
+      const grid = new Map();
+      for (let index = 0; index < particles.length; index += 1) {
+        const particle = particles[index];
+        const key = Math.trunc(particle.x / interactionRadius) * 1000 + Math.trunc((particle.y + 400) / interactionRadius);
+        const cell = grid.get(key) || [];
+        cell.push(index);
+        grid.set(key, cell);
+      }
+      for (let index = 0; index < particles.length; index += 1) {
+        const particle = particles[index];
+        const gridX = Math.trunc(particle.x / interactionRadius);
+        const gridY = Math.trunc((particle.y + 400) / interactionRadius);
+        let density = 0;
+        let nearDensity = 0;
+        const neighbors = [];
+        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+          for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+            const cell = grid.get((gridX + offsetX) * 1000 + gridY + offsetY);
+            if (!cell) continue;
+            for (const otherIndex of cell) {
+              if (otherIndex === index) continue;
+              const other = particles[otherIndex];
+              const dx = other.x - particle.x;
+              const dy = other.y - particle.y;
+              const distanceSquared = dx * dx + dy * dy;
+              if (distanceSquared >= interactionRadiusSquared) continue;
+              const distance = Math.sqrt(distanceSquared) || 1e-3;
+              const amount = 1 - distance / interactionRadius;
+              density += amount * amount;
+              nearDensity += amount * amount * amount;
+              neighbors.push(otherIndex, distance, dx, dy);
+            }
+          }
+        }
+        const pressure = 0.05 * (density - 2.4);
+        const nearPressure = 0.12 * nearDensity;
+        for (let neighbor = 0; neighbor < neighbors.length; neighbor += 4) {
+          const other = particles[neighbors[neighbor]];
+          const distance = neighbors[neighbor + 1];
+          const amount = 1 - distance / interactionRadius;
+          const displacement = (pressure * amount + nearPressure * amount * amount) * 0.5 * interactionRadius;
+          const normalX = neighbors[neighbor + 2] / distance;
+          const normalY = neighbors[neighbor + 3] / distance;
+          other.ax += normalX * displacement;
+          other.ay += normalY * displacement;
+          particle.ax -= normalX * displacement;
+          particle.ay -= normalY * displacement;
+        }
+      }
+      for (const particle of particles) {
+        const displacement = Math.hypot(particle.ax, particle.ay);
+        const limit = displacement > 0.9 ? 0.9 / displacement : 1;
+        particle.x += particle.ax * limit;
+        particle.y += particle.ay * limit;
+        for (const blob of this.blobs) {
+          if (particle.x < blob.minX - 3 || particle.x > blob.maxX + 3 || particle.y < blob.minY - 3 || particle.y > blob.maxY + 3) continue;
+          pushJuiceOut(particle, blob);
+        }
+        particle.x = clamp(particle.x, 2, WORLD_WIDTH - 2);
+        if (particle.y > WORLD_HEIGHT - 2) {
+          particle.y = WORLD_HEIGHT - 2;
+          particle.x -= (particle.x - particle.px) * 0.3;
+        }
+        particle.vx = (particle.x - particle.px) / step;
+        particle.vy = (particle.y - particle.py) / step;
+        const speedSquared = particle.vx * particle.vx + particle.vy * particle.vy;
+        if (speedSquared > 490000) {
+          const speedLimit = 700 / Math.sqrt(speedSquared);
+          particle.vx *= speedLimit;
+          particle.vy *= speedLimit;
+        }
+      }
+    }
+    for (const particle of particles) {
+      particle.age += dt;
+      particle.vx *= Math.pow(0.995, dt * 60);
+    }
+    this.juiceParticles = particles.filter((particle) => particle.age < particle.life);
   }
 
   checkDanger(dt) {
@@ -581,6 +813,15 @@ export class SoftBambooGame {
     }
     this.scoreElement.textContent = String(this.score);
     this.bestScoreElement.textContent = String(this.bestScore);
+    this.scoreElement.classList.remove('bump');
+    void this.scoreElement.offsetWidth;
+    this.scoreElement.classList.add('bump');
+  }
+
+  updateStats() {
+    this.mergeCountElement.textContent = String(this.mergeCount);
+    this.maxComboElement.textContent = String(this.maxCombo);
+    this.juiceTotalElement.textContent = String(Math.round(this.juiceTotal));
   }
 
   updatePreview() {
@@ -597,10 +838,19 @@ export class SoftBambooGame {
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', `第 ${levelIndex + 1} 级 ${level.name}`);
     const context = canvas.getContext('2d');
+    const previewRadius = 30;
+    const centerX = 48;
+    const centerY = 55;
+    context.save();
     context.beginPath();
-    context.arc(48, 48, 45, 0, Math.PI * 2);
+    context.arc(centerX, centerY, previewRadius, 0, Math.PI * 2);
     context.clip();
-    context.drawImage(this.previewImages.get(levelIndex), 0, 0, 96, 96);
+    context.drawImage(this.previewImages.get(levelIndex), centerX - previewRadius, centerY - previewRadius, previewRadius * 2, previewRadius * 2);
+    context.restore();
+    context.save();
+    context.translate(centerX, centerY);
+    drawFruitStem(context, levelIndex, previewRadius);
+    context.restore();
     container.append(canvas);
   }
 
@@ -625,9 +875,14 @@ export class SoftBambooGame {
     if (!this.context) return;
     const context = this.context;
     context.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    context.save();
+    if (this.cameraShake > 0.1) {
+      context.translate((Math.random() - 0.5) * this.cameraShake, (Math.random() - 0.5) * this.cameraShake);
+    }
     if (this.held && !this.isFinished) {
       this.drawGuide(context, this.held.maxY + 4, this.landingY(this.aimX, this.held.maxY, this.held), this.held.level);
     }
+    this.drawJuiceParticles(context, false);
     context.save();
     context.fillStyle = 'rgba(45, 20, 57, 0.14)';
     for (const blob of this.blobs) {
@@ -639,12 +894,15 @@ export class SoftBambooGame {
     }
     context.restore();
     for (const blob of [...this.blobs].sort((a, b) => a.cy - b.cy)) this.drawBlob(context, blob);
+    for (const bridge of this.bridges) drawLiquidBridge(context, bridge);
+    this.drawEffects(context);
     if (this.dangerDuration > 0 && !this.isFinished) {
       const pulse = 0.45 + Math.sin(performance.now() / 110) * 0.2;
       context.fillStyle = `rgba(189, 53, 92, ${pulse})`;
       context.fillRect(0, DANGER_Y - 2, WORLD_WIDTH, 3);
     }
     if (!this.isFinished) this.drawPipette(context, this.aimX, this.squeeze, this.held?.level ?? this.currentLevel);
+    context.restore();
   }
 
   drawBlob(context, blob) {
@@ -658,14 +916,30 @@ export class SoftBambooGame {
     context.transform(matrix[0], matrix[1], matrix[2], matrix[3], blob.cx, blob.cy);
     context.drawImage(this.images.get(blob.level), -radius * 1.2, -radius * 1.2, radius * 2.4, radius * 2.4);
     context.restore();
+    const halfWidth = Math.max(4, (blob.maxX - blob.minX) * 0.5);
+    const halfHeight = Math.max(4, (blob.maxY - blob.minY) * 0.5);
     const centerX = (blob.minX + blob.maxX) * 0.5;
     const centerY = (blob.minY + blob.maxY) * 0.5;
-    const gradient = context.createRadialGradient(centerX - blob.br * 0.35, centerY - blob.br * 0.42, 0, centerX, centerY, blob.br * 1.15);
-    gradient.addColorStop(0, 'rgba(255,255,255,0.15)');
-    gradient.addColorStop(0.5, 'rgba(255,255,255,0)');
-    gradient.addColorStop(1, 'rgba(49,18,67,0.12)');
-    context.fillStyle = gradient;
-    context.fillRect(blob.minX - 3, blob.minY - 3, blob.maxX - blob.minX + 6, blob.maxY - blob.minY + 6);
+    context.save();
+    context.translate(centerX, centerY);
+    context.scale(halfWidth, halfHeight);
+    const causticColor = mixRgb(hexRgb(blob.info.color), [255, 250, 220], 0.6);
+    const caustic = context.createRadialGradient(0.1, 0.62, 0.02, 0.1, 0.62, 0.62);
+    caustic.addColorStop(0, rgba(causticColor, 0.5));
+    caustic.addColorStop(1, rgba(hexRgb(blob.info.color), 0));
+    context.fillStyle = caustic;
+    context.fillRect(-1.2, -1.2, 2.4, 2.4);
+    const shade = context.createRadialGradient(-0.42, -0.5, 0.02, 0, 0, 1.08);
+    shade.addColorStop(0, 'rgba(255,255,255,0.34)');
+    shade.addColorStop(0.32, 'rgba(255,255,255,0)');
+    shade.addColorStop(0.72, 'rgba(0,0,0,0)');
+    shade.addColorStop(1, hexToRgba(blob.info.outline, 0.55));
+    context.fillStyle = shade;
+    context.fillRect(-1.2, -1.2, 2.4, 2.4);
+    context.restore();
+    context.lineWidth = Math.max(3, radius * 0.22);
+    context.strokeStyle = 'rgba(255,255,255,0.07)';
+    context.stroke();
     if (blob.flash > 0) {
       context.fillStyle = `rgba(255,255,245,${blob.flash * 0.72})`;
       context.fill();
@@ -677,8 +951,80 @@ export class SoftBambooGame {
     context.stroke();
     context.save();
     context.transform(matrix[0], matrix[1], matrix[2], matrix[3], blob.cx, blob.cy);
+    context.save();
+    context.rotate(-0.55);
+    context.fillStyle = 'rgba(255,255,255,0.62)';
+    context.beginPath();
+    context.ellipse(-radius * 0.08, -radius * 0.62, radius * 0.3, radius * 0.12, 0, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.arc(-radius * 0.52, -radius * 0.36, Math.max(1.2, radius * 0.05), 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+    drawFruitStem(context, blob.level, radius);
     drawBlobFace(context, blob, radius);
     context.restore();
+    context.restore();
+  }
+
+  drawJuiceParticles(context, foreground) {
+    for (const particle of this.juiceParticles) {
+      const airborne = particle.age < 0.7;
+      if (foreground !== airborne) continue;
+      const fade = Math.min(1, (particle.life - particle.age) / 1.4);
+      const color = mixRgb(particle.color, [255, 255, 255], 0.15);
+      context.fillStyle = rgba(color, (foreground ? 0.9 : 0.42) * fade);
+      context.beginPath();
+      context.arc(particle.x, particle.y, particle.size * (0.55 + fade * 0.45), 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+
+  drawEffects(context) {
+    for (const ring of this.effectRings) {
+      const progress = ring.age / ring.life;
+      context.strokeStyle = rgba(ring.color, (1 - progress) * 0.7);
+      context.lineWidth = 6 * (1 - progress) + 1;
+      context.beginPath();
+      context.arc(ring.x, ring.y, ring.radius * (1 + progress * 0.9), 0, Math.PI * 2);
+      context.stroke();
+    }
+    for (const particle of this.sparkParticles) {
+      const fade = 1 - particle.age / particle.life;
+      context.fillStyle = rgba(mixRgb(particle.color, [255, 255, 255], 0.4), fade);
+      if (particle.star) {
+        context.save();
+        context.translate(particle.x, particle.y);
+        context.rotate(particle.age * 6);
+        const size = particle.size * 1.6 * fade + 0.5;
+        context.fillRect(-size, -0.6, size * 2, 1.2);
+        context.fillRect(-0.6, -size, 1.2, size * 2);
+        context.restore();
+      } else {
+        context.beginPath();
+        context.arc(particle.x, particle.y, particle.size * fade + 0.4, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+    this.drawJuiceParticles(context, true);
+    context.save();
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    for (const text of this.floatingTexts) {
+      const progress = text.age / text.life;
+      const alpha = progress < 0.7 ? 1 : 1 - (progress - 0.7) / 0.3;
+      const scale = progress < 0.15 ? easeOutBack(progress / 0.15) : 1;
+      context.save();
+      context.translate(text.x, text.y);
+      context.scale(scale, scale);
+      context.font = `800 ${text.big ? 30 : 20}px system-ui, sans-serif`;
+      context.lineWidth = 5;
+      context.strokeStyle = `rgba(21,13,31,${alpha * 0.8})`;
+      context.strokeText(text.text, 0, 0);
+      context.fillStyle = text.color ? rgba(text.color, alpha) : `rgba(255,236,200,${alpha})`;
+      context.fillText(text.text, 0, 0);
+      context.restore();
+    }
     context.restore();
   }
 
@@ -790,6 +1136,75 @@ function integrate(blob, dt) {
     blob.vy[index] += gravity;
     blob.x[index] += blob.vx[index] * dt;
     blob.y[index] += blob.vy[index] * dt;
+  }
+}
+
+function drawLeaf(context, x, y, length, angle, color = '#5fcf4a') {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+  context.fillStyle = color;
+  context.strokeStyle = '#1f5a17';
+  context.lineWidth = 1.4;
+  context.beginPath();
+  context.moveTo(0, 0);
+  context.quadraticCurveTo(length * 0.5, -length * 0.38, length, 0);
+  context.quadraticCurveTo(length * 0.5, length * 0.38, 0, 0);
+  context.fill();
+  context.stroke();
+  context.restore();
+}
+
+function drawFruitStem(context, level, radius) {
+  context.lineCap = 'round';
+  const stem = (height, bend, width = 2.4) => {
+    context.strokeStyle = '#6b3a1a';
+    context.lineWidth = width;
+    context.beginPath();
+    context.moveTo(0, -radius * 0.9);
+    context.quadraticCurveTo(bend * 0.3, -radius * 0.9 - height * 0.6, bend, -radius * 0.9 - height);
+    context.stroke();
+  };
+  switch (level) {
+    case 0:
+      stem(radius * 0.8, radius * 0.45, 2);
+      drawLeaf(context, radius * 0.38, -radius * 1.6, radius * 0.7, -0.4);
+      break;
+    case 1:
+      for (let leaf = 0; leaf < 5; leaf += 1) drawLeaf(context, 0, -radius * 0.86, radius * 0.55, -Math.PI / 2 + (leaf - 2) * 0.62, '#4fc24a');
+      break;
+    case 2:
+      stem(radius * 0.4, radius * 0.12, 2.2);
+      break;
+    case 3:
+    case 4:
+      context.fillStyle = '#4b8a2a';
+      context.beginPath();
+      context.arc(0, -radius * 0.93, radius * 0.08 + 1, 0, Math.PI * 2);
+      context.fill();
+      drawLeaf(context, 0, -radius * 0.95, radius * 0.6, -0.5);
+      break;
+    case 5:
+      stem(radius * 0.38, -radius * 0.1, 3);
+      drawLeaf(context, -radius * 0.06, -radius * 1.12, radius * 0.55, -0.35);
+      break;
+    case 6:
+      drawLeaf(context, 0, -radius * 0.92, radius * 0.5, -2.6);
+      drawLeaf(context, 0, -radius * 0.92, radius * 0.56, -0.45);
+      break;
+    case 7:
+      stem(radius * 0.32, radius * 0.1, 3.2);
+      break;
+    case 9:
+      context.strokeStyle = '#3c6a1a';
+      context.lineWidth = 4;
+      context.beginPath();
+      context.moveTo(0, -radius * 0.97);
+      context.bezierCurveTo(radius * 0.05, -radius * 1.12, radius * 0.16, -radius * 1.12, radius * 0.12, -radius * 1.04);
+      context.stroke();
+      break;
+    default:
+      break;
   }
 }
 
@@ -1199,8 +1614,157 @@ function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function isBridgeBlocked(a, b, blobs) {
+  const axisX = b.cx - a.cx;
+  const axisY = b.cy - a.cy;
+  const axisLengthSquared = axisX * axisX + axisY * axisY || 1;
+  for (const other of blobs) {
+    if (other === a || other === b) continue;
+    const amount = ((other.cx - a.cx) * axisX + (other.cy - a.cy) * axisY) / axisLengthSquared;
+    if (amount <= 0 || amount >= 1) continue;
+    const distance = Math.hypot(a.cx + axisX * amount - other.cx, a.cy + axisY * amount - other.cy);
+    if (distance < other.rest * 0.75) return true;
+  }
+  return false;
+}
+
+function rayPolygon(blob, originX, originY, directionX, directionY) {
+  let farthest = -1;
+  for (let index = 0, previous = blob.N - 1; index < blob.N; previous = index, index += 1) {
+    const x0 = blob.x[previous] - originX;
+    const y0 = blob.y[previous] - originY;
+    const edgeX = blob.x[index] - blob.x[previous];
+    const edgeY = blob.y[index] - blob.y[previous];
+    const denominator = directionX * edgeY - directionY * edgeX;
+    if (Math.abs(denominator) < 1e-9) continue;
+    const distance = (x0 * edgeY - y0 * edgeX) / denominator;
+    const edgeAmount = (x0 * directionY - y0 * directionX) / denominator;
+    if (distance >= 0 && edgeAmount >= 0 && edgeAmount <= 1 && distance > farthest) farthest = distance;
+  }
+  return farthest;
+}
+
+function drawLiquidBridge(context, bridge) {
+  const { a, b, close } = bridge;
+  const axisX = b.cx - a.cx;
+  const axisY = b.cy - a.cy;
+  const axisLength = Math.hypot(axisX, axisY) || 1;
+  const normalX = axisX / axisLength;
+  const normalY = axisY / axisLength;
+  const farthestParticle = (blob, x, y) => {
+    let result = 0;
+    let value = -Infinity;
+    for (let index = 0; index < blob.N; index += 1) {
+      const projection = (blob.x[index] - blob.cx) * x + (blob.y[index] - blob.cy) * y;
+      if (projection > value) { value = projection; result = index; }
+    }
+    return result;
+  };
+  const indexA = farthestParticle(a, normalX, normalY);
+  const indexB = farthestParticle(b, -normalX, -normalY);
+  const spreadA = Math.max(1, Math.round(a.N * (0.05 + 0.08 * close)));
+  const spreadB = Math.max(1, Math.round(b.N * (0.05 + 0.08 * close)));
+  const point = (blob, index, inset = 0) => {
+    const wrapped = (index + blob.N) % blob.N;
+    const dx = blob.x[wrapped] - blob.cx;
+    const dy = blob.y[wrapped] - blob.cy;
+    const length = Math.hypot(dx, dy) || 1;
+    return [blob.x[wrapped] - dx / length * inset, blob.y[wrapped] - dy / length * inset];
+  };
+  const side = ([x, y]) => (x - a.cx) * -normalY + (y - a.cy) * normalX;
+  let a1 = point(a, indexA - spreadA);
+  let a2 = point(a, indexA + spreadA);
+  if (side(a1) < side(a2)) [a1, a2] = [a2, a1];
+  let b1 = point(b, indexB - spreadB);
+  let b2 = point(b, indexB + spreadB);
+  if (side(b1) < side(b2)) [b1, b2] = [b2, b1];
+  const centerX = (a1[0] + a2[0] + b1[0] + b2[0]) * 0.25;
+  const centerY = (a1[1] + a2[1] + b1[1] + b2[1]) * 0.25;
+  const pinch = 0.15 + 0.75 * (1 - close);
+  const control = (first, second) => [
+    lerp((first[0] + second[0]) * 0.5, centerX, pinch),
+    lerp((first[1] + second[1]) * 0.5, centerY, pinch),
+  ];
+  const control1 = control(a1, b1);
+  const control2 = control(b2, a2);
+  const insideB = point(b, indexB, 3.2);
+  const insideA = point(a, indexA, 3.2);
+
+  context.save();
+  context.beginPath();
+  context.moveTo(a1[0], a1[1]);
+  context.quadraticCurveTo(control1[0], control1[1], b1[0], b1[1]);
+  context.quadraticCurveTo(insideB[0], insideB[1], b2[0], b2[1]);
+  context.quadraticCurveTo(control2[0], control2[1], a2[0], a2[1]);
+  context.quadraticCurveTo(insideA[0], insideA[1], a1[0], a1[1]);
+  context.closePath();
+  const gradient = context.createLinearGradient(a.cx, a.cy, b.cx, b.cy);
+  const color = hexRgb(a.info.color);
+  gradient.addColorStop(0, a.info.color);
+  gradient.addColorStop(0.5, rgba(mixRgb(color, [255, 255, 255], 0.25), 1));
+  gradient.addColorStop(1, a.info.color);
+  context.globalAlpha = clamp(close * 1.6, 0, 1);
+  context.fillStyle = gradient;
+  context.fill();
+  context.strokeStyle = hexToRgba(a.info.outline, 0.85);
+  context.lineWidth = 2.3;
+  context.beginPath();
+  context.moveTo(a1[0], a1[1]);
+  context.quadraticCurveTo(control1[0], control1[1], b1[0], b1[1]);
+  context.moveTo(b2[0], b2[1]);
+  context.quadraticCurveTo(control2[0], control2[1], a2[0], a2[1]);
+  context.stroke();
+  context.restore();
+}
+
+function pushJuiceOut(particle, blob) {
+  let inside = false;
+  let nearestSquared = Infinity;
+  let closestX = particle.x;
+  let closestY = particle.y;
+  for (let index = 0, previous = blob.N - 1; index < blob.N; previous = index, index += 1) {
+    const x0 = blob.x[previous];
+    const y0 = blob.y[previous];
+    const x1 = blob.x[index];
+    const y1 = blob.y[index];
+    if ((y0 > particle.y) !== (y1 > particle.y) && particle.x < (x1 - x0) * (particle.y - y0) / (y1 - y0) + x0) inside = !inside;
+    const edgeX = x1 - x0;
+    const edgeY = y1 - y0;
+    const lengthSquared = edgeX * edgeX + edgeY * edgeY;
+    const amount = clamp(lengthSquared > 0 ? ((particle.x - x0) * edgeX + (particle.y - y0) * edgeY) / lengthSquared : 0, 0, 1);
+    const edgePointX = x0 + edgeX * amount;
+    const edgePointY = y0 + edgeY * amount;
+    const dx = edgePointX - particle.x;
+    const dy = edgePointY - particle.y;
+    const distanceSquared = dx * dx + dy * dy;
+    if (distanceSquared < nearestSquared) {
+      nearestSquared = distanceSquared;
+      closestX = edgePointX;
+      closestY = edgePointY;
+    }
+  }
+  const distance = Math.sqrt(nearestSquared);
+  if (!inside && distance >= particle.size) return;
+  let normalX = closestX - blob.cx;
+  let normalY = closestY - blob.cy;
+  const normalLength = Math.hypot(normalX, normalY) || 1;
+  normalX /= normalLength;
+  normalY /= normalLength;
+  particle.x = closestX + normalX * particle.size;
+  particle.y = closestY + normalY * particle.size;
+  const outwardVelocity = particle.vx * normalX + particle.vy * normalY;
+  if (outwardVelocity < 0) {
+    particle.vx -= outwardVelocity * normalX * 1.2;
+    particle.vy -= outwardVelocity * normalY * 1.2;
+  }
+}
+
 function randomRange(minimum, maximum) {
   return minimum + Math.random() * (maximum - minimum);
+}
+
+function mixRgb(first, second, amount) {
+  return first.map((value, index) => Math.round(value + (second[index] - value) * amount));
 }
 
 function hexRgb(color) {

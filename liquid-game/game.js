@@ -641,13 +641,15 @@ export function createFruitTexture(level, options = {}) {
   };
   drawFruitPattern(context, level.pattern, random);
 
-  const shade = context.createRadialGradient(-0.42, -0.5, 0.02, 0, 0, 1.12);
-  shade.addColorStop(0, 'rgba(255,255,255,0.34)');
-  shade.addColorStop(0.32, 'rgba(255,255,255,0)');
-  shade.addColorStop(0.72, 'rgba(0,0,0,0)');
-  shade.addColorStop(1, rgba(hexRgb(level.outline), 0.52));
-  context.fillStyle = shade;
-  context.fillRect(-1.25, -1.25, 2.5, 2.5);
+  if (options.includeShade !== false) {
+    const shade = context.createRadialGradient(-0.42, -0.5, 0.02, 0, 0, 1.08);
+    shade.addColorStop(0, 'rgba(255,255,255,0.34)');
+    shade.addColorStop(0.32, 'rgba(255,255,255,0)');
+    shade.addColorStop(0.72, 'rgba(0,0,0,0)');
+    shade.addColorStop(1, rgba(hexRgb(level.outline), 0.55));
+    context.fillStyle = shade;
+    context.fillRect(-1.25, -1.25, 2.5, 2.5);
+  }
   if (options.includeFace !== false) drawFruitFace(context);
   return canvas;
 }

@@ -23,20 +23,19 @@ export const LEVELS = Array.from({ length: LEVEL_COUNT }, (_, index) => ({
   ...FRUITS[index],
 }));
 
-const SPAWN_TABLE = [
-  { level: 0, cumulative: 0.42 },
-  { level: 1, cumulative: 0.72 },
-  { level: 2, cumulative: 0.91 },
-  { level: 3, cumulative: 1 },
-];
-
-export function randomSpawnLevel() {
-  const value = Math.random();
-  return SPAWN_TABLE.find((item) => value < item.cumulative)?.level ?? 0;
+export function randomSpawnLevel(highestLevel = 0) {
+  const cap = Math.min(4, Math.max(2, highestLevel - 1));
+  const weights = [30, 26, 20, 14, 10].slice(0, cap + 1);
+  let choice = weights.reduce((total, weight) => total + weight, 0) * Math.random();
+  for (let level = 0; level < weights.length; level += 1) {
+    choice -= weights[level];
+    if (choice <= 0) return level;
+  }
+  return 0;
 }
 
 export function mergeScore(level) {
-  return 2 ** level;
+  return level * (level + 1) / 2 + 1;
 }
 
 export function loadBestScore(mode) {

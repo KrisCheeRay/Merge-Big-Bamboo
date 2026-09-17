@@ -26,7 +26,7 @@ function showModeSelect() {
       <section class="mode-card" aria-labelledby="mode-title">
         <p class="eyebrow">软萌果冻物理 · 十级挑战</p>
         <h1 id="mode-title">流心西瓜</h1>
-        <p class="mode-intro">水果会随着碰撞挤压、回弹和摇晃，最高分会保存在当前浏览器中。</p>
+        <p class="mode-intro">水果会随着碰撞挤压、回弹和摇晃。</p>
         <div class="mode-grid">
           <button class="mode-option" type="button" data-mode="classic">
             <span class="mode-badge">经典模式</span>
@@ -39,7 +39,6 @@ function showModeSelect() {
             <small>两个第 10 级消失，奖励 1024 分并继续挑战。</small>
           </button>
         </div>
-        <p class="mode-note">十级水果使用适合软体形变的程序化纹理。</p>
       </section>
     </main>`;
   document.querySelectorAll('[data-mode]').forEach((button) => {

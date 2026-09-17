@@ -28,9 +28,8 @@ function showModeSelect() {
     <main class="page-shell mode-page">
       ${socialLinks()}
       <section class="mode-card" aria-labelledby="mode-title">
-        <p class="eyebrow">全新双模式挑战</p>
         <h1 id="mode-title">合成大竹头</h1>
-        <p class="mode-intro">选择玩法开始挑战，最高分会保存在当前浏览器中。</p>
+        <p class="mode-intro">选择玩法开始挑战。</p>
         <div class="mode-grid">
           <button class="mode-option" type="button" data-mode="classic">
             <span class="mode-badge">经典模式</span>

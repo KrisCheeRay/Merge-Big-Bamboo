@@ -31,6 +31,50 @@ body {
   justify-content: space-between;
 }
 
+.soft-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  padding: 0 14px 8px;
+  background: #f6effd;
+  border-bottom: 1px solid rgba(104, 57, 133, 0.16);
+}
+
+.soft-stats > div {
+  min-width: 0;
+  padding: 6px 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.soft-stats > div:first-child { border-radius: 7px 0 0 7px; }
+.soft-stats > div:last-child { border-radius: 0 7px 7px 0; }
+.soft-stats span { color: #816c8d; font-size: 9px; font-weight: 800; }
+.soft-stats strong { color: #57336e; font-size: 15px; line-height: 1; }
+
+.soft-game-page .mini-ball {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.soft-game-page .mini-ball canvas {
+  border-radius: 0;
+}
+
+#score-value.bump {
+  animation: soft-score-bump 260ms ease-out;
+}
+
+@keyframes soft-score-bump {
+  50% { transform: scale(1.24); color: #cf5f8a; }
+}
+
 .soft-game-page .soft-stage {
   background:
     linear-gradient(rgba(250, 246, 255, 0.58), rgba(245, 235, 252, 0.7)),
@@ -86,9 +130,26 @@ body {
 }
 
 @media (max-width: 680px) {
-  .soft-stage {
-    height: min(150vw, calc(100svh - 164px));
-    min-height: 500px;
+  .soft-game-page {
+    min-height: 100%;
+    overflow: visible;
+    align-items: flex-start;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .soft-game-page .game-card {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .soft-game-page .soft-stage {
+    height: clamp(430px, 118vw, 560px);
+    min-height: 0;
+    aspect-ratio: auto;
+    touch-action: pan-y;
+  }
+
+  .soft-stage canvas {
     touch-action: pan-y;
   }
 
@@ -97,8 +158,23 @@ body {
   }
 }
 
+@media (max-width: 680px) and (max-height: 740px) {
+  .soft-game-page .soft-stage {
+    height: clamp(400px, 108vw, 500px);
+  }
+}
+
 @media (max-width: 380px) {
   .soft-control-bar .game-actions {
     width: 100%;
+  }
+
+  .soft-stats {
+    padding-inline: 8px;
+  }
+
+  .soft-stats > div {
+    padding-inline: 5px;
+    gap: 4px;
   }
 }
