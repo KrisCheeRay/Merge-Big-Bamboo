@@ -8,6 +8,7 @@ const projectDir = resolve(fanpageDir, '..');
 const outputDir = resolve(projectDir, 'dist');
 const stagingDir = resolve(projectDir, '.dist-site-staging');
 const gameDir = resolve(stagingDir, 'game');
+const softGameDir = resolve(stagingDir, 'soft-game');
 const viteBin = resolve(projectDir, 'node_modules', 'vite', 'bin', 'vite.js');
 
 if (!existsSync(viteBin)) {
@@ -31,6 +32,29 @@ if (build.status !== 0) {
   process.exit(build.status ?? 1);
 }
 
+const softBuild = spawnSync(
+  process.execPath,
+  [
+    viteBin,
+    'build',
+    '--config',
+    'vite.liquid.config.js',
+    '--configLoader',
+    'native',
+    '--outDir',
+    '../.dist-site-staging/soft-game',
+  ],
+  {
+    cwd: projectDir,
+    stdio: 'inherit',
+  },
+);
+
+if (softBuild.status !== 0) {
+  rmSync(stagingDir, { recursive: true, force: true });
+  process.exit(softBuild.status ?? 1);
+}
+
 for (const file of ['index.html', 'style.css', 'app.js', 'fanpage_background.webp']) {
   cpSync(resolve(fanpageDir, file), resolve(stagingDir, file));
 }
@@ -41,3 +65,4 @@ renameSync(stagingDir, outputDir);
 console.log('\n网站构建完成：');
 console.log(`  主页：${resolve(outputDir, 'index.html')}`);
 console.log(`  游戏：${resolve(outputDir, 'game', 'index.html')}`);
+console.log(`  软萌游戏：${resolve(outputDir, 'soft-game', 'index.html')}`);

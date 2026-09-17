@@ -5,7 +5,6 @@ import {
   loadAppearanceSelection,
   saveAppearanceSelection,
 } from './config.js';
-
 const app = document.querySelector('#app');
 let game = null;
 let activeModal = null;
@@ -31,7 +30,7 @@ function showModeSelect() {
       <section class="mode-card" aria-labelledby="mode-title">
         <p class="eyebrow">全新双模式挑战</p>
         <h1 id="mode-title">合成大竹头</h1>
-        <p class="mode-intro">选择玩法开始挑战，两种模式会分别保存本机最高分。</p>
+        <p class="mode-intro">选择玩法开始挑战，最高分会保存在当前浏览器中。</p>
         <div class="mode-grid">
           <button class="mode-option" type="button" data-mode="classic">
             <span class="mode-badge">经典模式</span>
@@ -44,7 +43,7 @@ function showModeSelect() {
             <small>两个第 10 级消失，奖励 1024 分并继续挑战。</small>
           </button>
         </div>
-        <div class="mode-secondary-actions">
+        <div class="mode-secondary-actions one-action">
           <button class="secondary-wide-button" id="open-appearance" type="button">搭配球体外观</button>
         </div>
         <p class="mode-note">每一级都能在原版和新角色之间选择；只改变外观，不影响分数。</p>

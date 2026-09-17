@@ -36,17 +36,15 @@ npm run build:site
 npm run preview
 ```
 
-构建结果位于 `dist`：主页在 `/`，游戏在 `/game/`。本版本是纯静态网站，不需要排行榜 API、数据库或云函数。
+## 静态网站构建
 
-## GitHub Pages
-
-仓库已包含 GitHub Actions 工作流。推送到 `main` 后，会自动执行完整网站构建并部署 `dist`。
+完整网站包含 Fanpage、合成大竹头和流心西瓜，所有内容都可以作为静态文件部署。游戏最高分仅保存在当前浏览器中。
 
 ```bash
-git add .
-git commit -m "Deploy static fan site and game"
-git push origin main
+npm run build:site
 ```
+
+构建结果位于 `dist/`。推送到 `main` 分支后，仓库中的 GitHub Actions 会自动构建并发布到 GitHub Pages。
 
 ## 素材目录
 

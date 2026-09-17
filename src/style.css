@@ -583,23 +583,6 @@ h1 {
   flex: 1;
 }
 
-.submit-status {
-  min-height: 20px;
-  margin: 8px 0 0;
-  color: #6e8066;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.submit-status[data-state="success"] {
-  color: #347244;
-}
-
-.submit-status[data-state="error"],
-.submit-status[data-state="warning"] {
-  color: #b25849;
-}
-
 .app-modal {
   position: fixed;
   z-index: 50;
