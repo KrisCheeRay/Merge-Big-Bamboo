@@ -266,6 +266,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 .toast.visible { transform: translate(-50%, 0); opacity: 1; }
 
+@media (min-width: 1001px) {
+  .intro {
+    align-self: start;
+    padding-top: clamp(140px, 18vh, 200px);
+  }
+}
+
 @media (max-width: 1000px) {
   .page-backdrop { background-position: 43% center; }
   .page-shell { width: min(760px, calc(100% - 32px)); padding: 32px 0; grid-template-columns: 1fr; gap: 24px; align-items: start; }
