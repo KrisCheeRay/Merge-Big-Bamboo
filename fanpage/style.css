@@ -271,6 +271,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
     align-self: start;
     padding-top: clamp(140px, 18vh, 200px);
   }
+
+  .directory {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
 }
 
 @media (max-width: 1000px) {
@@ -290,7 +297,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .intro h1 { font-size: clamp(58px, 20vw, 82px); }
   .intro-copy { max-width: 360px; margin: 20px 0; font-size: 13px; }
   .game-entry { min-height: 78px; }
-  .directory { padding: 28px 16px 34px; border-width: 1px 0 0; border-radius: 0; background: rgba(250, 247, 252, 0.96); backdrop-filter: blur(18px); }
+  .directory { padding: 28px 16px 34px; border-width: 1px 0 0; border-color: transparent; border-radius: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+  .directory .eyebrow { color: #f1ddff; text-shadow: 0 2px 10px rgba(28, 12, 41, 0.72); }
+  .directory .section-heading h2,
+  .directory .documentary-heading h2 { color: #fff; text-shadow: 0 2px 12px rgba(28, 12, 41, 0.78); }
+  .documentary, .favorites, .community { border-top-color: rgba(255, 255, 255, 0.28); }
   .social-grid { grid-template-columns: 1fr; }
   .social-card { min-height: 68px; }
   .documentary { gap: 12px; }
