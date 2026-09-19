@@ -356,7 +356,7 @@ export class SoftBambooGame {
       if (!event.isPrimary || this.isFinished || (event.pointerType === 'mouse' && event.button !== 0)) return;
       this.pointer = { id: event.pointerId, start: point(event), gesture: '' };
       updateAim(this.pointer.start.x);
-      this.canvas.setPointerCapture?.(event.pointerId);
+      if (event.pointerType !== 'touch') this.canvas.setPointerCapture?.(event.pointerId);
     }, { signal });
 
     this.canvas.addEventListener('pointermove', (event) => {
@@ -366,7 +366,10 @@ export class SoftBambooGame {
         const dx = current.x - this.pointer.start.x;
         const dy = current.y - this.pointer.start.y;
         if (!this.pointer.gesture && Math.hypot(dx, dy) > 8) this.pointer.gesture = Math.abs(dx) >= Math.abs(dy) ? 'horizontal' : 'vertical';
-        if (this.pointer.gesture === 'vertical') return;
+        if (this.pointer.gesture === 'vertical') {
+          this.pointer = null;
+          return;
+        }
         event.preventDefault();
       }
       if (event.pointerType === 'mouse' || this.pointer?.id === event.pointerId) updateAim(current.x);
