@@ -130,10 +130,13 @@ body {
 }
 
 @media (max-width: 680px) {
+  .soft-mode-page,
   .soft-game-page {
     min-height: 100%;
     overflow: visible;
     align-items: flex-start;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
 
